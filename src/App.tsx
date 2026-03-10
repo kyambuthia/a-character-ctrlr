@@ -83,6 +83,7 @@ function DemoScene() {
             <FlatArena />
             <MwendoPlayer
               controls="keyboard"
+              debug
               inputRef={touchInputRef}
               position={[0, 2.5, 6]}
             />

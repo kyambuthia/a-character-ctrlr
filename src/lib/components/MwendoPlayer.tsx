@@ -6,6 +6,7 @@ import {
   useRef,
 } from "react";
 import { Group, MathUtils, Vector3 } from "three";
+import { MwendoPlayerDebug } from "./MwendoPlayerDebug";
 import { PrimitiveHero } from "./PrimitiveHero";
 import { useMwendoStore, useMwendoStoreApi } from "../MwendoProvider";
 import { useMwendoKeyboardInput } from "../useMwendoKeyboardInput";
@@ -28,6 +29,7 @@ export type MwendoPlayerProps = {
   linearDamping?: number;
   capsuleHalfHeight?: number;
   capsuleRadius?: number;
+  debug?: boolean;
 };
 
 function dampAxis(
@@ -58,6 +60,7 @@ export function MwendoPlayer({
   linearDamping = 8,
   capsuleHalfHeight = 0.52,
   capsuleRadius = 0.34,
+  debug = false,
 }: MwendoPlayerProps) {
   const storeApi = useMwendoStoreApi();
   const setPlayerSnapshot = useMwendoStore((state) => state.setPlayerSnapshot);
@@ -77,6 +80,13 @@ export function MwendoPlayer({
   const rightUpperLegRef = useRef<Group>(null);
   const rightLowerLegRef = useRef<Group>(null);
   const gaitPhaseRef = useRef(0);
+  const debugStateRef = useRef<{
+    facing: number;
+    movementMode: MwendoMovementMode;
+  } | null>({
+    facing: 0,
+    movementMode: "idle",
+  });
   const idleInputRef = useRef<MwendoInputState | null>({ ...DEFAULT_MWENDO_INPUT });
   const keyboardInputRef = useMwendoKeyboardInput(controls === "keyboard");
   const initialPositionRef = useRef(position);
@@ -114,7 +124,7 @@ export function MwendoPlayer({
     const { cameraYaw, playerFacing } = storeApi.getState();
 
     forward.set(-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw));
-    right.set(forward.z, 0, -forward.x);
+    right.set(-forward.z, 0, forward.x);
     movement.set(0, 0, 0);
 
     if (keys.forward) movement.add(forward);
@@ -241,35 +251,63 @@ export function MwendoPlayer({
       facing,
       movementMode: nextMovementMode,
     });
+    debugStateRef.current = {
+      facing,
+      movementMode: nextMovementMode,
+    };
   });
 
   return (
-    <RigidBody
-      ref={bodyRef}
-      colliders={false}
-      canSleep={false}
-      enabledRotations={[false, false, false]}
-      linearDamping={linearDamping}
-      position={position}
-    >
-      <CapsuleCollider args={[capsuleHalfHeight, capsuleRadius]} />
-      <PrimitiveHero
-        movementMode={movementMode}
-        rig={{
-          rootRef: visualRef,
-          pelvisRef,
-          spineRef,
-          headRef,
-          leftUpperArmRef,
-          leftLowerArmRef,
-          rightUpperArmRef,
-          rightLowerArmRef,
-          leftUpperLegRef,
-          leftLowerLegRef,
-          rightUpperLegRef,
-          rightLowerLegRef,
-        }}
-      />
-    </RigidBody>
+    <>
+      {debug ? (
+        <MwendoPlayerDebug
+          bodyRef={bodyRef}
+          capsuleHalfHeight={capsuleHalfHeight}
+          capsuleRadius={capsuleRadius}
+          debugStateRef={debugStateRef}
+          joints={{
+            pelvisRef,
+            spineRef,
+            headRef,
+            leftUpperArmRef,
+            leftLowerArmRef,
+            rightUpperArmRef,
+            rightLowerArmRef,
+            leftUpperLegRef,
+            leftLowerLegRef,
+            rightUpperLegRef,
+            rightLowerLegRef,
+          }}
+        />
+      ) : null}
+
+      <RigidBody
+        ref={bodyRef}
+        colliders={false}
+        canSleep={false}
+        enabledRotations={[false, false, false]}
+        linearDamping={linearDamping}
+        position={position}
+      >
+        <CapsuleCollider args={[capsuleHalfHeight, capsuleRadius]} />
+        <PrimitiveHero
+          movementMode={movementMode}
+          rig={{
+            rootRef: visualRef,
+            pelvisRef,
+            spineRef,
+            headRef,
+            leftUpperArmRef,
+            leftLowerArmRef,
+            rightUpperArmRef,
+            rightLowerArmRef,
+            leftUpperLegRef,
+            leftLowerLegRef,
+            rightUpperLegRef,
+            rightLowerLegRef,
+          }}
+        />
+      </RigidBody>
+    </>
   );
 }
