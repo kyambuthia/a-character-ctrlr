@@ -7,8 +7,8 @@ export function Hud() {
     <div className="hud">
       <h1>Mwendo Prototype</h1>
       <p>
-        Prototype goal: validate third-person movement, chase camera feel, flatspace
-        traversal, and a physics ragdoll before layering authored animation.
+        Prototype goal: validate a rig-free primitive biped, chase camera feel,
+        flatspace traversal, and a physics ragdoll before layering richer animation.
       </p>
       <div className="mode">
         <span className="swatch" />
@@ -18,7 +18,7 @@ export function Hud() {
         <li>Click the scene to lock the camera.</li>
         <li>Move with WASD or arrow keys.</li>
         <li>Hold Shift to run and Ctrl or C to crouch.</li>
-        <li>Walk into the crates, ramp, and ragdoll to test collisions.</li>
+        <li>Walk into the crates, ramp, and ragdoll to test the primitive-body sandbox.</li>
       </ul>
     </div>
   );

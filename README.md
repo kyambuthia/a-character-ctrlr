@@ -1,11 +1,11 @@
 # Mwendo
 
-`Mwendo` is a React Three Fiber prototype for building a production-grade third-person character stack in phases, starting with flatspace traversal and a visible ragdoll test target.
+`Mwendo` is a React Three Fiber prototype for building a production-grade third-person character stack in phases, starting with flatspace traversal and a rig-free primitive biped plus a visible ragdoll test target.
 
 ## Current prototype
 
 - Third-person chase camera with mouse-look via pointer lock
-- Physics-backed capsule controller with walk, run, and crouch states
+- Physics-backed capsule controller with a procedural primitive biped for walk, run, and crouch states
 - Flat test arena with crates and a ramp for collision checks
 - Jointed ragdoll dummy to validate impacts and future recovery work
 
@@ -20,7 +20,7 @@
 ### Phase 1: Sandbox feel
 
 1. Tighten controller tuning: acceleration, deceleration, slopes, step offset, grounded detection, and jump buffering.
-2. Replace the placeholder capsule avatar with a skinned biped and a clean locomotion animation graph.
+2. Evolve the primitive biped into a controllable active-ragdoll or hybrid puppet before deciding whether a skinned shell is even necessary.
 3. Add debug overlays for contact normals, movement state, and animation blend weights.
 
 ### Phase 2: Locomotion quality

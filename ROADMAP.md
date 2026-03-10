@@ -32,14 +32,15 @@ Exit criteria:
 
 ## Milestone 2: Locomotion animation graph
 
-- Import a biped rig with walk, run, crouch, idle, turn, stop, and start clips
-- Build a lower-body locomotion graph with inertialized transitions
+- Expand the primitive biped into a more complete locomotion puppet with walk, run, crouch, idle, turn, stop, and start coverage
+- Add active-ragdoll or hybrid targets so the primitive body can stay physically meaningful while still reading clearly in motion
 - Add foot IK, stride warping, slope adaptation, and root-motion policy decisions
 
 Exit criteria:
 
 - No obvious foot sliding on flat ground
 - Walk, run, crouch, stop, and turn transitions are responsive and readable
+- The physics proportions and visual proportions stay aligned well enough that a later skinned shell remains optional, not required
 
 ## Milestone 3: Upper-body and combat layering
 
