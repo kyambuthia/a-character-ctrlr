@@ -1,10 +1,11 @@
 import {
   RigidBody,
+  interactionGroups,
   useRevoluteJoint,
   useSphericalJoint,
   type RapierRigidBody,
 } from "@react-three/rapier";
-import { useRef } from "react";
+import { useRef, type ComponentProps, type ReactNode } from "react";
 import type { MwendoVec3 } from "../types";
 import {
   MwendoRagdollDebug,
@@ -20,12 +21,37 @@ export type MwendoRagdollDummyProps = {
   manualStepCount?: number;
 };
 
+const RAGDOLL_COLLISION_GROUPS = interactionGroups([1], [0]);
+
 function LimbBox(props: { color: string; scale: [number, number, number] }) {
   return (
     <mesh castShadow receiveShadow scale={props.scale}>
       <boxGeometry />
       <meshStandardMaterial color={props.color} roughness={0.82} />
     </mesh>
+  );
+}
+
+function RagdollBody(
+  props: ComponentProps<typeof RigidBody> & { children: ReactNode },
+) {
+  const { children, ...rest } = props;
+
+  return (
+    <RigidBody
+      additionalSolverIterations={8}
+      angularDamping={3.4}
+      canSleep
+      collisionGroups={RAGDOLL_COLLISION_GROUPS}
+      contactSkin={0.008}
+      friction={1.15}
+      linearDamping={1.45}
+      restitution={0.02}
+      solverGroups={RAGDOLL_COLLISION_GROUPS}
+      {...rest}
+    >
+      {children}
+    </RigidBody>
   );
 }
 
@@ -237,44 +263,44 @@ export function MwendoRagdollDummy({
         />
       ) : null}
 
-      <RigidBody ref={torso} colliders="cuboid" mass={4.5} position={[0, 0, 0]}>
+      <RagdollBody ref={torso} colliders="cuboid" mass={4.5} position={[0, 0, 0]}>
         <LimbBox color="#cc6f5a" scale={[0.9, 1.5, 0.45]} />
-      </RigidBody>
+      </RagdollBody>
 
-      <RigidBody ref={head} colliders="ball" mass={1.1} position={[0, 1.2, 0]}>
+      <RagdollBody ref={head} colliders="ball" mass={1.1} position={[0, 1.2, 0]}>
         <mesh castShadow receiveShadow>
           <sphereGeometry args={[0.32, 24, 24]} />
           <meshStandardMaterial color="#f1d7b8" roughness={0.9} />
         </mesh>
-      </RigidBody>
+      </RagdollBody>
 
-      <RigidBody ref={upperArmLeft} colliders="cuboid" mass={0.9} position={[-0.92, 0.4, 0]}>
+      <RagdollBody ref={upperArmLeft} colliders="cuboid" mass={0.9} position={[-0.92, 0.4, 0]}>
         <LimbBox color="#4a88c7" scale={[0.28, 0.7, 0.28]} />
-      </RigidBody>
-      <RigidBody ref={lowerArmLeft} colliders="cuboid" mass={0.8} position={[-0.92, -0.34, 0]}>
+      </RagdollBody>
+      <RagdollBody ref={lowerArmLeft} colliders="cuboid" mass={0.8} position={[-0.92, -0.34, 0]}>
         <LimbBox color="#3d6b9b" scale={[0.24, 0.68, 0.24]} />
-      </RigidBody>
+      </RagdollBody>
 
-      <RigidBody ref={upperArmRight} colliders="cuboid" mass={0.9} position={[0.92, 0.4, 0]}>
+      <RagdollBody ref={upperArmRight} colliders="cuboid" mass={0.9} position={[0.92, 0.4, 0]}>
         <LimbBox color="#4a88c7" scale={[0.28, 0.7, 0.28]} />
-      </RigidBody>
-      <RigidBody ref={lowerArmRight} colliders="cuboid" mass={0.8} position={[0.92, -0.34, 0]}>
+      </RagdollBody>
+      <RagdollBody ref={lowerArmRight} colliders="cuboid" mass={0.8} position={[0.92, -0.34, 0]}>
         <LimbBox color="#3d6b9b" scale={[0.24, 0.68, 0.24]} />
-      </RigidBody>
+      </RagdollBody>
 
-      <RigidBody ref={upperLegLeft} colliders="cuboid" mass={1.4} position={[-0.24, -1.55, 0]}>
+      <RagdollBody ref={upperLegLeft} colliders="cuboid" mass={1.4} position={[-0.24, -1.55, 0]}>
         <LimbBox color="#203244" scale={[0.32, 0.92, 0.32]} />
-      </RigidBody>
-      <RigidBody ref={lowerLegLeft} colliders="cuboid" mass={1.1} position={[-0.24, -2.44, 0]}>
+      </RagdollBody>
+      <RagdollBody ref={lowerLegLeft} colliders="cuboid" mass={1.1} position={[-0.24, -2.44, 0]}>
         <LimbBox color="#162434" scale={[0.28, 0.88, 0.28]} />
-      </RigidBody>
+      </RagdollBody>
 
-      <RigidBody ref={upperLegRight} colliders="cuboid" mass={1.4} position={[0.24, -1.55, 0]}>
+      <RagdollBody ref={upperLegRight} colliders="cuboid" mass={1.4} position={[0.24, -1.55, 0]}>
         <LimbBox color="#203244" scale={[0.32, 0.92, 0.32]} />
-      </RigidBody>
-      <RigidBody ref={lowerLegRight} colliders="cuboid" mass={1.1} position={[0.24, -2.44, 0]}>
+      </RagdollBody>
+      <RagdollBody ref={lowerLegRight} colliders="cuboid" mass={1.1} position={[0.24, -2.44, 0]}>
         <LimbBox color="#162434" scale={[0.28, 0.88, 0.28]} />
-      </RigidBody>
+      </RagdollBody>
     </group>
   );
 }
