@@ -84,6 +84,8 @@ const STAND_ASSIST_MAX_SPEED = 0.42;
 const STAND_FOOT_LATERAL_OFFSET = 0.18;
 const STAND_FOOT_FORWARD_OFFSET = 0.12;
 const STAND_SEGMENT_MAX_TORQUE = 0.6;
+const GROUNDED_GRACE_PERIOD = 0.08;
+const GROUNDING_MIN_DURATION = 0.03;
 const REVOLUTE_JOINT_LIMITS = Object.fromEntries(
   CHARACTER_CTRLR_HUMANOID_REVOLUTE_JOINT_DEFINITIONS.map((definition) => [
     definition.key,
@@ -1008,8 +1010,14 @@ export function CharacterCtrlrActiveRagdollPlayer({
   const jointCalibrationRef = useRef<Partial<Record<CharacterCtrlrHumanoidRevoluteJointKey, number>>>({});
   const jointCalibrationReadyRef = useRef(false);
   const debugLogCooldownRef = useRef(0);
+  const groundedGraceTimerRef = useRef(0);
+  const groundingConfirmTimerRef = useRef(0);
+  const rawContactsGroundedRef = useRef(false);
+  const jumpContactClearPendingRef = useRef(false);
+  const contactTimestampsRef = useRef<{ left: number; right: number }>({ left: 0, right: 0 });
+  const smoothedGaitEffortRef = useRef(0);
 
-  const updateGrounded = (nextGrounded: boolean) => {
+  const commitGrounded = (nextGrounded: boolean) => {
     if (groundedRef.current === nextGrounded) {
       return;
     }
@@ -1025,18 +1033,36 @@ export function CharacterCtrlrActiveRagdollPlayer({
     );
 
     supportStateRef.current = nextSupportState;
-    updateGrounded(nextSupportState !== "none");
+    const hasContacts = nextSupportState !== "none";
+    rawContactsGroundedRef.current = hasContacts;
+
+    if (hasContacts) {
+      groundedGraceTimerRef.current = 0;
+
+      if (groundedRef.current) {
+        groundingConfirmTimerRef.current = GROUNDING_MIN_DURATION;
+      }
+    }
 
     return nextSupportState;
   };
 
   const addSupportContact = (side: SupportSide, colliderHandle: number) => {
+    if (jumpContactClearPendingRef.current) {
+      return;
+    }
+
     const supportContacts =
       side === "left"
         ? leftSupportContactsRef.current
         : rightSupportContactsRef.current;
     const count = supportContacts.get(colliderHandle) ?? 0;
     supportContacts.set(colliderHandle, count + 1);
+
+    if (count === 0) {
+      contactTimestampsRef.current[side] = performance.now();
+    }
+
     syncSupportState();
   };
 
@@ -1063,7 +1089,7 @@ export function CharacterCtrlrActiveRagdollPlayer({
       const normal = payload.manifold.normal();
       const supportY = payload.flipped ? -normal.y : normal.y;
 
-      if (supportY < 0.35) {
+      if (supportY < 0.2) {
         return;
       }
 
@@ -1179,8 +1205,49 @@ export function CharacterCtrlrActiveRagdollPlayer({
             ? crouchSpeed
             : 0;
 
+    const leftFootPos = leftFoot.translation();
+    const rightFootPos = rightFoot.translation();
+    const leftFootBottomY = leftFootPos.y - 0.08;
+    const rightFootBottomY = rightFootPos.y - 0.08;
+    const lowestFootY = Math.min(leftFootBottomY, rightFootBottomY);
+    const feetNearGround = lowestFootY < 0.12 && Math.abs(pelvis.linvel().y) < 2.0;
+
+    const effectiveGroundedSignal = rawContactsGroundedRef.current || (feetNearGround && !jumpContactClearPendingRef.current);
+
+    if (effectiveGroundedSignal) {
+      groundedGraceTimerRef.current = 0;
+      groundingConfirmTimerRef.current += delta;
+
+      if (!groundedRef.current && groundingConfirmTimerRef.current >= GROUNDING_MIN_DURATION) {
+        commitGrounded(true);
+      }
+
+      if (feetNearGround && !rawContactsGroundedRef.current) {
+        const nearLeftGround = leftFootBottomY < 0.12;
+        const nearRightGround = rightFootBottomY < 0.12;
+
+        if (nearLeftGround && nearRightGround) {
+          supportStateRef.current = "double";
+        } else if (nearLeftGround) {
+          supportStateRef.current = "left";
+        } else if (nearRightGround) {
+          supportStateRef.current = "right";
+        }
+      }
+    } else {
+      groundingConfirmTimerRef.current = 0;
+
+      if (groundedRef.current) {
+        groundedGraceTimerRef.current += delta;
+
+        if (groundedGraceTimerRef.current >= GROUNDED_GRACE_PERIOD) {
+          commitGrounded(false);
+        }
+      }
+    }
+
     const actualSupportState = supportStateRef.current;
-    const grounded = actualSupportState !== "none";
+    const grounded = groundedRef.current;
     const gaitConfig = getGaitConfig(locomotionMode);
     const locomotionBlend = Math.min(
       1,
@@ -1221,10 +1288,11 @@ export function CharacterCtrlrActiveRagdollPlayer({
     jumpHeldRef.current = jumpPressed;
 
     if (jumpTriggered) {
-      leftSupportContactsRef.current.clear();
-      rightSupportContactsRef.current.clear();
-      supportStateRef.current = "none";
-      updateGrounded(false);
+      jumpContactClearPendingRef.current = true;
+      commitGrounded(false);
+      groundedGraceTimerRef.current = 0;
+      groundingConfirmTimerRef.current = 0;
+      rawContactsGroundedRef.current = false;
       pelvis.applyImpulse(
         { x: 0, y: jumpImpulse * pelvisMass, z: 0 },
         true,
@@ -1233,6 +1301,15 @@ export function CharacterCtrlrActiveRagdollPlayer({
         { x: 0, y: jumpImpulse * chest.mass() * 0.35, z: 0 },
         true,
       );
+    }
+
+    if (jumpContactClearPendingRef.current && currentVelocity.y > 0.5) {
+      leftSupportContactsRef.current.clear();
+      rightSupportContactsRef.current.clear();
+      supportStateRef.current = "none";
+      jumpContactClearPendingRef.current = false;
+    } else if (jumpContactClearPendingRef.current && !jumpTriggered && currentVelocity.y <= 0) {
+      jumpContactClearPendingRef.current = false;
     }
 
     const supportStateAfterJump = jumpTriggered ? "none" : supportStateRef.current;
@@ -1261,8 +1338,15 @@ export function CharacterCtrlrActiveRagdollPlayer({
       );
     const speedRatio = Math.min(1, horizontalSpeed / Math.max(0.001, runSpeed));
     const commandEffort = hasMovementInput ? gaitConfig.commandEffort : 0;
-    const gaitEffort =
+    const rawGaitEffort =
       grounded && hasMovementInput ? Math.max(speedRatio, commandEffort) : speedRatio;
+    smoothedGaitEffortRef.current = MathUtils.damp(
+      smoothedGaitEffortRef.current,
+      rawGaitEffort,
+      8.0,
+      delta,
+    );
+    const gaitEffort = smoothedGaitEffortRef.current;
     const postureAmount = gaitConfig.postureAmount;
     const airborneAmount = grounded ? 0 : 1;
     const gaitState = gaitStateRef.current;
@@ -1280,6 +1364,10 @@ export function CharacterCtrlrActiveRagdollPlayer({
       standingAssistRequested && supportStateAfterJump !== "none"
         ? "double"
         : supportStateAfterJump;
+    
+    const MIN_PHASE_HOLD = 0.05;
+    const canTransition = gaitState.phaseElapsed >= MIN_PHASE_HOLD;
+
     if (!grounded || supportStateForPhase === "none") {
       transitionGaitState(
         gaitState,
@@ -1287,16 +1375,16 @@ export function CharacterCtrlrActiveRagdollPlayer({
         deriveGaitPhaseDuration("airborne", gaitEffort, gaitConfig),
         jumpTriggered ? "jump" : "support-lost",
       );
-    } else if (!hasMovementInput) {
+    } else if (!hasMovementInput && gaitState.phase !== "idle" && canTransition) {
       transitionGaitState(gaitState, "idle", 0, "idle-no-input");
-    } else if (supportStateForPhase === "left") {
+    } else if (supportStateForPhase === "left" && gaitState.phase !== "left-stance" && canTransition) {
       transitionGaitState(
         gaitState,
         "left-stance",
         deriveGaitPhaseDuration("left-stance", gaitEffort, gaitConfig),
         "left-foot-support",
       );
-    } else if (supportStateForPhase === "right") {
+    } else if (supportStateForPhase === "right" && gaitState.phase !== "right-stance" && canTransition) {
       transitionGaitState(
         gaitState,
         "right-stance",
@@ -1632,29 +1720,31 @@ export function CharacterCtrlrActiveRagdollPlayer({
         supportLateralError = lateralError;
         supportForwardError = forwardError;
         supportHeightError = heightError;
+        const supportImpulseCeiling = MathUtils.lerp(0.62, 0.88, gaitEffort);
         const supportImpulseY = MathUtils.clamp(
           (
             heightError * (standingSupport ? 12.5 : 9.5)
             - currentVelocity.y * (standingSupport ? 2.2 : 1.8)
           ) * supportMass * delta,
           standingSupport ? -0.22 : -0.14,
-          standingSupport ? 1.08 : 0.62,
+          standingSupport ? 1.08 : supportImpulseCeiling,
         );
+        const supportCorrectionBoost = MathUtils.lerp(1.0, 1.4, gaitEffort);
         supportCorrection
           .copy(facingRight)
           .multiplyScalar(
-            correctedLateralError * supportMass * supportCentering * delta,
+            correctedLateralError * supportMass * supportCentering * supportCorrectionBoost * delta,
           );
         supportForward
           .copy(facingForward)
           .multiplyScalar(
-            correctedForwardError * supportMass * supportForwarding * delta,
+            correctedForwardError * supportMass * supportForwarding * supportCorrectionBoost * delta,
           );
         supportCorrection.add(supportForward);
         const heightImpulse = MathUtils.clamp(
           supportImpulseY * pelvisSupportShare,
           standingSupport ? -0.18 : -0.12,
-          standingSupport ? 0.82 : 0.44,
+          standingSupport ? 0.82 : MathUtils.lerp(0.44, 0.68, gaitEffort),
         );
         pelvis.applyImpulse(
           {
@@ -2019,31 +2109,39 @@ export function CharacterCtrlrActiveRagdollPlayer({
             ? 1.08
             : 1;
 
+    const pelvisTorqueClamp = MathUtils.lerp(0.55, 0.82, gaitEffort);
+    const chestTorqueClamp = MathUtils.lerp(0.38, 0.58, gaitEffort);
+
+    const forwardLeanCompPitch =
+      groundedAfterControl && locomotionMode === "run"
+        ? MathUtils.clamp(captureForwardError * horizontalSpeed * 0.15, -0.2, 0.4)
+        : 0;
+
     pelvis.applyTorqueImpulse(
       {
         x: MathUtils.clamp(
           (
-            (phasePoseTargets.pelvisPitch - pelvisEuler.x) * uprightTorque
+            (phasePoseTargets.pelvisPitch - forwardLeanCompPitch - pelvisEuler.x) * uprightTorque
             - pelvisAngularVelocity.x * balanceDamping
           ) * pelvisTorqueScale * recoveryTorqueBoost * delta,
-          -0.55,
-          0.55,
+          -pelvisTorqueClamp,
+          pelvisTorqueClamp,
         ),
         y: MathUtils.clamp(
           (
             yawError * turnTorque
             - pelvisAngularVelocity.y * (balanceDamping * 0.65)
           ) * pelvisTorqueScale * delta,
-          -0.28,
-          0.28,
+          -(pelvisTorqueClamp * 0.5),
+          pelvisTorqueClamp * 0.5,
         ),
         z: MathUtils.clamp(
           (
             (phasePoseTargets.pelvisRoll - pelvisEuler.z) * uprightTorque
             - pelvisAngularVelocity.z * balanceDamping
           ) * pelvisTorqueScale * recoveryTorqueBoost * delta,
-          -0.55,
-          0.55,
+          -pelvisTorqueClamp,
+          pelvisTorqueClamp,
         ),
       },
       true,
@@ -2053,27 +2151,27 @@ export function CharacterCtrlrActiveRagdollPlayer({
       {
         x: MathUtils.clamp(
           (
-            (phasePoseTargets.chestPitch - chestEuler.x) * uprightTorque * 0.84
+            (phasePoseTargets.chestPitch - forwardLeanCompPitch * 0.5 - chestEuler.x) * uprightTorque * 0.84
             - chestAngularVelocity.x * balanceDamping
           ) * pelvisTorqueScale * recoveryTorqueBoost * delta,
-          -0.38,
-          0.38,
+          -chestTorqueClamp,
+          chestTorqueClamp,
         ),
         y: MathUtils.clamp(
           (
             yawError * turnTorque * 0.35
             - chestAngularVelocity.y * (balanceDamping * 0.5)
           ) * pelvisTorqueScale * delta,
-          -0.16,
-          0.16,
+          -(chestTorqueClamp * 0.42),
+          chestTorqueClamp * 0.42,
         ),
         z: MathUtils.clamp(
           (
             (phasePoseTargets.chestRoll - chestEuler.z) * uprightTorque * 0.84
             - chestAngularVelocity.z * balanceDamping
           ) * pelvisTorqueScale * recoveryTorqueBoost * delta,
-          -0.38,
-          0.38,
+          -chestTorqueClamp,
+          chestTorqueClamp,
         ),
       },
       true,
