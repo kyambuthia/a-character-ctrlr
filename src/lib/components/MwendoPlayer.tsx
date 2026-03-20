@@ -46,6 +46,9 @@ export type MwendoPlayerProps = {
   deceleration?: number;
   airControl?: number;
   debug?: boolean;
+  paused?: boolean;
+  timeScale?: number;
+  manualStepCount?: number;
   onSnapshotChange?: (snapshot: MwendoPlayerSnapshot) => void;
   onMovementModeChange?: (
     movementMode: MwendoMovementMode,
@@ -103,6 +106,9 @@ export function MwendoPlayer({
   deceleration = 14,
   airControl = 0.38,
   debug = false,
+  paused = false,
+  timeScale = 1,
+  manualStepCount = 0,
   onSnapshotChange,
   onMovementModeChange,
   onGroundedChange,
@@ -131,10 +137,12 @@ export function MwendoPlayer({
     facing: number;
     movementMode: MwendoMovementMode;
     grounded: boolean;
+    supportState: "none" | "double";
   } | null>({
     facing: 0,
     movementMode: "idle",
     grounded: false,
+    supportState: "none",
   });
   const supportColliderHandlesRef = useRef<Set<number>>(new Set());
   const groundedRef = useRef(false);
@@ -434,6 +442,7 @@ export function MwendoPlayer({
       facing,
       movementMode: nextMovementMode,
       grounded: groundedAfterMove,
+      supportState: groundedAfterMove ? "double" : "none",
     };
   });
 
@@ -445,6 +454,9 @@ export function MwendoPlayer({
           capsuleHalfHeight={capsuleHalfHeight}
           capsuleRadius={capsuleRadius}
           debugStateRef={debugStateRef}
+          manualStepCount={manualStepCount}
+          paused={paused}
+          timeScale={timeScale}
           joints={{
             pelvisRef,
             spineRef,
