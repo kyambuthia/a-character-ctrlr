@@ -607,6 +607,26 @@ function DebugBoard({
             >
               {`support err lat ${locomotionDebugState.supportLateralError.toFixed(2)}  fwd ${locomotionDebugState.supportForwardError.toFixed(2)}  h ${locomotionDebugState.supportHeightError.toFixed(2)}`}
             </Text>
+            <Text
+              anchorX="center"
+              anchorY="middle"
+              color="#7ea4b3"
+              fontSize={0.09}
+              maxWidth={4.2}
+              position={[0, -1.38, 0]}
+            >
+              {`capture err lat ${locomotionDebugState.captureLateralError.toFixed(2)}  fwd ${locomotionDebugState.captureForwardError.toFixed(2)}  t ${locomotionDebugState.captureTime.toFixed(2)}`}
+            </Text>
+            <Text
+              anchorX="center"
+              anchorY="middle"
+              color="#7ea4b3"
+              fontSize={0.085}
+              maxWidth={4.4}
+              position={[0, -1.6, 0]}
+            >
+              {`com ${locomotionDebugState.centerOfMass[0].toFixed(2)} ${locomotionDebugState.centerOfMass[1].toFixed(2)} ${locomotionDebugState.centerOfMass[2].toFixed(2)}  cp ${locomotionDebugState.capturePoint[0].toFixed(2)} ${locomotionDebugState.capturePoint[2].toFixed(2)}`}
+            </Text>
           </>
         ) : null}
         <Text
@@ -614,7 +634,7 @@ function DebugBoard({
           anchorY="middle"
           color="#7ea4b3"
           fontSize={0.1}
-          position={[0, locomotionDebugState ? -1.42 : -0.48, 0]}
+          position={[0, locomotionDebugState ? -1.86 : -0.48, 0]}
         >
           frames {liveStepCount}
         </Text>

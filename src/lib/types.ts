@@ -77,6 +77,13 @@ export type CharacterCtrlrLocomotionDebugState = {
   supportLateralError: number;
   supportForwardError: number;
   supportHeightError: number;
+  centerOfMass: CharacterCtrlrVec3;
+  centerOfMassVelocity: CharacterCtrlrVec3;
+  supportCenter: CharacterCtrlrVec3;
+  capturePoint: CharacterCtrlrVec3;
+  captureTime: number;
+  captureLateralError: number;
+  captureForwardError: number;
 };
 
 export const DEFAULT_CHARACTER_CTRLR_INPUT: CharacterCtrlrInputState = {
