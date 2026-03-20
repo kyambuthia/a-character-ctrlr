@@ -37,7 +37,7 @@ The library is now in a solid packageable baseline for:
 What is not finished yet:
 
 - step-up and slope-specialized controller handling
-- production active-ragdoll locomotion, jumping, and recovery
+- tuned production active-ragdoll walking, running, and recovery behavior
 - authored interaction systems for doors, vehicles, weapons, and golf
 - skinned-character animation or motion-matching backends
 
@@ -167,7 +167,17 @@ Useful exported types:
 
 Production note:
 
-- active-ragdoll work is still marked experimental, but the implementation plan is now production-oriented and literature-backed
+- active-ragdoll work is still marked experimental, but the implementation now has the intended long-term control architecture in place:
+  - explicit gait FSM
+  - phase-based pose targets
+  - COM and capture-point feedback
+  - step length, width, and clearance targets
+  - locomotion family configs
+  - recovery and deterministic gait re-entry
+- standing is now handled as a dedicated support problem rather than just an idle gait:
+  - pelvis support is solved relative to the foot sole plane
+  - idle and low-speed double-support use a stand-assist path
+  - feet are planted and leveled while standing so the rig can hold posture before stepping
 - new locomotion, balance, and recovery work should land in the library runtime first and only then be exposed through the demo
 
 `CharacterCtrlrCameraRig` supports:
@@ -203,11 +213,12 @@ Production note:
 
 Demo tip:
 
-- add `?player=ragdoll` to the dev URL to load the experimental active-ragdoll player instead of the capsule baseline
+- the demo now defaults to the active ragdoll player
+- add `?player=capsule` to the dev URL to load the capsule baseline instead
 
 ## Design direction
 
-The current shipping strategy is deliberate: keep control, camera, state, and interaction logic deterministic first, then add more sophisticated animation systems later. For the active ragdoll specifically, that now means a production-focused finite-state controller with explicit support, COM, and balance diagnostics before any learned or mocap-heavy runtime is considered.
+The current shipping strategy is deliberate: keep control, camera, state, and interaction logic deterministic first, then add more sophisticated animation systems later. For the active ragdoll specifically, that now means a production-focused finite-state controller with explicit support, foot planting, COM, capture-point, and balance diagnostics before any learned or mocap-heavy runtime is considered.
 
 See also:
 

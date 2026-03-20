@@ -52,16 +52,30 @@ const facingForward = new Vector3();
 const swingCorrection = new Vector3();
 const swingLateral = new Vector3();
 const tempFootPosition = new Vector3();
+const standFootTarget = new Vector3();
+const standFootImpulse = new Vector3();
 const centerOfMassPosition = new Vector3();
 const centerOfMassVelocity = new Vector3();
 const capturePointPosition = new Vector3();
 const plannedFootfallPosition = new Vector3();
 const tempMassPosition = new Vector3();
 const tempMassVelocity = new Vector3();
+const footQuaternion = new Quaternion();
+const footEuler = new Euler(0, 0, 0, "YXZ");
 
 const GRAVITY = 9.81;
+const FOOT_SUPPORT_OFFSET = 0.08;
+const STAND_PELVIS_HEIGHT = 1.76;
+const STAND_ASSIST_MAX_SPEED = 0.42;
+const STAND_FOOT_LATERAL_OFFSET = 0.18;
+const STAND_FOOT_FORWARD_OFFSET = 0.12;
 
 type SupportSide = "left" | "right";
+
+type StandingFootPlant = {
+  left: CharacterCtrlrVec3;
+  right: CharacterCtrlrVec3;
+};
 
 type PhaseLimbPoseTargets = {
   hip: number;
@@ -161,7 +175,7 @@ const GAIT_CONFIGS: Record<
       width: [0.2, 0.2],
       height: [0.02, 0.02],
       pelvisLeadScale: [0, 0],
-      pelvisHeight: [1.34, 1.34],
+      pelvisHeight: [1.72, 1.72],
     },
     support: {
       centering: { double: 3.2, single: 5.4 },
@@ -186,23 +200,23 @@ const GAIT_CONFIGS: Record<
       heightDrive: [12, 12],
     },
     pose: {
-      baseHip: [0.02, 0.02],
-      baseKnee: [-0.08, -0.08],
-      baseAnkle: [0.08, 0.08],
+      baseHip: [0, 0],
+      baseKnee: [0, 0],
+      baseAnkle: [0.02, 0.02],
       baseShoulder: [0.1, 0.1],
       baseElbow: [-0.34, -0.34],
-      pelvisPitch: [-0.01, -0.01],
-      chestPitch: [0.03, 0.03],
-      doubleSupportCompression: [0.04, 0.04],
+      pelvisPitch: [0, 0],
+      chestPitch: [0.02, 0.02],
+      doubleSupportCompression: [0.01, 0.01],
       doubleSupportArmCounter: [0.04, 0.04],
-      swingReach: [-0.12, 0.2],
-      stanceDrive: [0.08, 0.08],
-      pelvisLean: [0.03, 0.03],
-      pelvisRoll: [0.03, 0.03],
+      swingReach: [-0.04, 0.08],
+      stanceDrive: [0.02, 0.02],
+      pelvisLean: [0.01, 0.01],
+      pelvisRoll: [0.01, 0.01],
       shoulderDrive: [0.16, 0.16],
       elbowDrive: [0.04, 0.04],
-      swingKnee: [0.18, 0.18],
-      swingAnkle: [0.08, 0.08],
+      swingKnee: [0.06, 0.06],
+      swingAnkle: [0.02, 0.02],
     },
   },
   walk: {
@@ -777,15 +791,15 @@ function applyRecoveryPoseTargets(
       break;
     }
     case "landing": {
-      const landingCompression = MathUtils.lerp(0.2, 0.05, recoveryProgress);
-      adjustedTargets.pelvisPitch -= landingCompression * 0.7;
-      adjustedTargets.chestPitch += landingCompression * 0.45;
-      adjustedTargets.left.hip -= landingCompression * 0.45;
-      adjustedTargets.right.hip -= landingCompression * 0.45;
-      adjustedTargets.left.knee -= landingCompression;
-      adjustedTargets.right.knee -= landingCompression;
-      adjustedTargets.left.ankle += landingCompression * 0.5;
-      adjustedTargets.right.ankle += landingCompression * 0.5;
+      const landingCompression = MathUtils.lerp(0.12, 0.02, recoveryProgress);
+      adjustedTargets.pelvisPitch -= landingCompression * 0.18;
+      adjustedTargets.chestPitch += landingCompression * 0.12;
+      adjustedTargets.left.hip -= landingCompression * 0.12;
+      adjustedTargets.right.hip -= landingCompression * 0.12;
+      adjustedTargets.left.knee -= landingCompression * 0.35;
+      adjustedTargets.right.knee -= landingCompression * 0.35;
+      adjustedTargets.left.ankle += landingCompression * 0.08;
+      adjustedTargets.right.ankle += landingCompression * 0.08;
       break;
     }
     case "fallen": {
@@ -830,6 +844,27 @@ function applyRecoveryPoseTargets(
   }
 
   return adjustedTargets;
+}
+
+function applyStandingPoseTargets(targets: PhasePoseTargets) {
+  return {
+    pelvisPitch: 0.01,
+    pelvisRoll: 0,
+    chestPitch: 0.02,
+    chestRoll: 0,
+    left: {
+      ...targets.left,
+      hip: 0,
+      knee: 0,
+      ankle: 0,
+    },
+    right: {
+      ...targets.right,
+      hip: 0,
+      knee: 0,
+      ankle: 0,
+    },
+  } satisfies PhasePoseTargets;
 }
 
 export function CharacterCtrlrActiveRagdollPlayer({
@@ -888,6 +923,7 @@ export function CharacterCtrlrActiveRagdollPlayer({
   const focusPositionRef = useRef<CharacterCtrlrVec3 | null>(null);
   const locomotionDebugRef = useRef<CharacterCtrlrLocomotionDebugState | null>(null);
   const initialPositionRef = useRef(position);
+  const standingFootPlantRef = useRef<StandingFootPlant | null>(null);
 
   const updateGrounded = (nextGrounded: boolean) => {
     if (groundedRef.current === nextGrounded) {
@@ -1224,6 +1260,7 @@ export function CharacterCtrlrActiveRagdollPlayer({
     });
     const chestRotation = chest.rotation();
     const chestAngularVelocity = chest.angvel();
+    const chestMass = chest.mass();
 
     chestQuaternion.set(
       chestRotation.x,
@@ -1263,6 +1300,14 @@ export function CharacterCtrlrActiveRagdollPlayer({
     let captureUrgency = 0;
     let footfallForwardError = 0;
     let footfallLateralError = 0;
+    const standingSupport =
+      groundedAfterControl
+      && (
+        !hasMovementInput
+        || horizontalSpeed < STAND_ASSIST_MAX_SPEED
+        || gaitState.phase === "idle"
+        || gaitState.phase === "double-support"
+      );
     const stepLengthTarget =
       groundedAfterControl && hasMovementInput
         ? MathUtils.lerp(gaitConfig.step.length[0], gaitConfig.step.length[1], gaitEffort)
@@ -1320,6 +1365,12 @@ export function CharacterCtrlrActiveRagdollPlayer({
         currentVelocity.z,
       );
     }
+    const supportMass = Math.max(
+      pelvisMass + chestMass,
+      totalTrackedMass * (standingSupport ? 0.9 : 0.78),
+    );
+    const pelvisSupportShare = standingSupport ? 0.74 : 0.78;
+    const chestSupportShare = 1 - pelvisSupportShare;
 
     capturePointPosition.set(
       centerOfMassPosition.x,
@@ -1338,7 +1389,7 @@ export function CharacterCtrlrActiveRagdollPlayer({
         supportCenter.add(
           tempFootPosition.set(
             leftFootPosition.x,
-            leftFootPosition.y,
+            leftFootPosition.y - FOOT_SUPPORT_OFFSET,
             leftFootPosition.z,
           ),
         );
@@ -1350,7 +1401,7 @@ export function CharacterCtrlrActiveRagdollPlayer({
         supportCenter.add(
           tempFootPosition.set(
             rightFootPosition.x,
-            rightFootPosition.y,
+            rightFootPosition.y - FOOT_SUPPORT_OFFSET,
             rightFootPosition.z,
           ),
         );
@@ -1435,49 +1486,252 @@ export function CharacterCtrlrActiveRagdollPlayer({
           1,
         );
         const desiredPelvisHeight =
-          supportCenter.y + MathUtils.lerp(
-            gaitConfig.step.pelvisHeight[0],
-            gaitConfig.step.pelvisHeight[1],
-            postureAmount,
+          supportCenter.y
+          + (
+            standingSupport
+              ? STAND_PELVIS_HEIGHT
+              : MathUtils.lerp(
+                  gaitConfig.step.pelvisHeight[0],
+                  gaitConfig.step.pelvisHeight[1],
+                  postureAmount,
+                )
           );
         const heightError = desiredPelvisHeight - rootPosition.y;
         supportLateralError = lateralError;
         supportForwardError = forwardError;
         supportHeightError = heightError;
-        const heightImpulse = MathUtils.clamp(
-          (heightError * 9.5 - currentVelocity.y * 1.8) * pelvisMass * delta,
-          -0.12,
-          0.38,
+        const supportImpulseY = MathUtils.clamp(
+          (
+            heightError * (standingSupport ? 12.5 : 9.5)
+            - currentVelocity.y * (standingSupport ? 2.2 : 1.8)
+          ) * supportMass * delta,
+          standingSupport ? -0.22 : -0.14,
+          standingSupport ? 1.08 : 0.62,
         );
-
         supportCorrection
           .copy(facingRight)
           .multiplyScalar(
-            correctedLateralError * pelvisMass * supportCentering * delta,
+            correctedLateralError * supportMass * supportCentering * delta,
           );
         supportForward
           .copy(facingForward)
           .multiplyScalar(
-            correctedForwardError * pelvisMass * supportForwarding * delta,
+            correctedForwardError * supportMass * supportForwarding * delta,
           );
         supportCorrection.add(supportForward);
+        const heightImpulse = MathUtils.clamp(
+          supportImpulseY * pelvisSupportShare,
+          standingSupport ? -0.18 : -0.12,
+          standingSupport ? 0.82 : 0.44,
+        );
         pelvis.applyImpulse(
           {
-            x: supportCorrection.x,
+            x: supportCorrection.x * pelvisSupportShare,
             y: heightImpulse,
-            z: supportCorrection.z,
+            z: supportCorrection.z * pelvisSupportShare,
           },
           true,
         );
         chest.applyImpulse(
           {
-            x: supportCorrection.x * 0.22,
-            y: heightImpulse * 0.52,
-            z: supportCorrection.z * 0.22,
+            x: supportCorrection.x * chestSupportShare,
+            y: supportImpulseY * chestSupportShare * 0.9,
+            z: supportCorrection.z * chestSupportShare,
           },
           true,
         );
       }
+    }
+
+    if (supportStateAfterJump === "none") {
+      const desiredFootCenterY =
+        rootPosition.y - STAND_PELVIS_HEIGHT + FOOT_SUPPORT_OFFSET;
+      const applyUnsupportedFootReach = (
+        foot: typeof leftFoot,
+        lateralDirection: 1 | -1,
+      ) => {
+        const footPosition = foot.translation();
+        const footVelocity = foot.linvel();
+        const footMass = foot.mass();
+        const footAngularVelocity = foot.angvel();
+        const footRotation = foot.rotation();
+
+        standFootTarget
+          .copy(facingRight)
+          .multiplyScalar(lateralDirection * STAND_FOOT_LATERAL_OFFSET)
+          .addScaledVector(facingForward, STAND_FOOT_FORWARD_OFFSET)
+          .add(tempFootPosition.set(rootPosition.x, desiredFootCenterY, rootPosition.z));
+
+        standFootImpulse.set(
+          MathUtils.clamp(
+            (standFootTarget.x - footPosition.x) * 18 - footVelocity.x * 4.6,
+            -2.2,
+            2.2,
+          ) * footMass * delta,
+          MathUtils.clamp(
+            (standFootTarget.y - footPosition.y) * 14 - footVelocity.y * 3,
+            -0.9,
+            0.45,
+          ) * footMass * delta,
+          MathUtils.clamp(
+            (standFootTarget.z - footPosition.z) * 18 - footVelocity.z * 4.6,
+            -2.2,
+            2.2,
+          ) * footMass * delta,
+        );
+        foot.applyImpulse(
+          {
+            x: standFootImpulse.x,
+            y: standFootImpulse.y,
+            z: standFootImpulse.z,
+          },
+          true,
+        );
+
+        footQuaternion.set(
+          footRotation.x,
+          footRotation.y,
+          footRotation.z,
+          footRotation.w,
+        );
+        footEuler.setFromQuaternion(footQuaternion, "YXZ");
+        foot.applyTorqueImpulse(
+          {
+            x: MathUtils.clamp(
+              ((0.04 - footEuler.x) * 4.8 - footAngularVelocity.x * 1.8) * footMass * delta,
+              -0.18,
+              0.18,
+            ),
+            y: MathUtils.clamp(
+              (
+                angleDifference(footEuler.y, facing) * 1.1
+                - footAngularVelocity.y * 0.7
+              ) * footMass * delta,
+              -0.1,
+              0.1,
+            ),
+            z: MathUtils.clamp(
+              ((0 - footEuler.z) * 5.2 - footAngularVelocity.z * 1.8) * footMass * delta,
+              -0.18,
+              0.18,
+            ),
+          },
+          true,
+        );
+      };
+
+      applyUnsupportedFootReach(leftFoot, -1);
+      applyUnsupportedFootReach(rightFoot, 1);
+    }
+
+    if (standingSupport && groundedAfterControl && supportStateAfterJump !== "none") {
+      const leftFootPosition = leftFoot.translation();
+      const rightFootPosition = rightFoot.translation();
+      const supportPlaneY =
+        supportStateAfterJump === "double"
+          ? (
+              (leftFootPosition.y - FOOT_SUPPORT_OFFSET)
+              + (rightFootPosition.y - FOOT_SUPPORT_OFFSET)
+            ) * 0.5
+          : supportStateAfterJump === "left"
+            ? leftFootPosition.y - FOOT_SUPPORT_OFFSET
+            : rightFootPosition.y - FOOT_SUPPORT_OFFSET;
+
+      if (!standingFootPlantRef.current) {
+        standingFootPlantRef.current = {
+          left: [
+            leftFootPosition.x,
+            supportPlaneY + FOOT_SUPPORT_OFFSET,
+            leftFootPosition.z,
+          ],
+          right: [
+            rightFootPosition.x,
+            supportPlaneY + FOOT_SUPPORT_OFFSET,
+            rightFootPosition.z,
+          ],
+        };
+      }
+
+      const standingFootPlant = standingFootPlantRef.current;
+      if (standingFootPlant) {
+        standingFootPlant.left[1] = supportPlaneY + FOOT_SUPPORT_OFFSET;
+        standingFootPlant.right[1] = supportPlaneY + FOOT_SUPPORT_OFFSET;
+
+        const applyStandingFootPlant = (
+          foot: typeof leftFoot,
+          target: CharacterCtrlrVec3,
+        ) => {
+          const footPosition = foot.translation();
+          const footVelocity = foot.linvel();
+          const footMass = foot.mass();
+          const footAngularVelocity = foot.angvel();
+          const footRotation = foot.rotation();
+
+          standFootTarget.set(target[0], target[1], target[2]);
+          standFootImpulse.set(
+            MathUtils.clamp(
+              (standFootTarget.x - footPosition.x) * 28 - footVelocity.x * 6.8,
+              -2.6,
+              2.6,
+            ) * footMass * delta,
+            MathUtils.clamp(
+              Math.max(0, standFootTarget.y - footPosition.y) * 18 - footVelocity.y * 3.4,
+              -0.24,
+              1.3,
+            ) * footMass * delta,
+            MathUtils.clamp(
+              (standFootTarget.z - footPosition.z) * 28 - footVelocity.z * 6.8,
+              -2.6,
+              2.6,
+            ) * footMass * delta,
+          );
+          foot.applyImpulse(
+            {
+              x: standFootImpulse.x,
+              y: standFootImpulse.y,
+              z: standFootImpulse.z,
+            },
+            true,
+          );
+
+          footQuaternion.set(
+            footRotation.x,
+            footRotation.y,
+            footRotation.z,
+            footRotation.w,
+          );
+          footEuler.setFromQuaternion(footQuaternion, "YXZ");
+
+          foot.applyTorqueImpulse(
+            {
+              x: MathUtils.clamp(
+                ((0.04 - footEuler.x) * 6.4 - footAngularVelocity.x * 2.4) * footMass * delta,
+                -0.3,
+                0.3,
+              ),
+              y: MathUtils.clamp(
+                (
+                  angleDifference(footEuler.y, facing) * 1.4
+                  - footAngularVelocity.y * 0.8
+                ) * footMass * delta,
+                -0.12,
+                0.12,
+              ),
+              z: MathUtils.clamp(
+                ((0 - footEuler.z) * 6.8 - footAngularVelocity.z * 2.4) * footMass * delta,
+                -0.3,
+                0.3,
+              ),
+            },
+            true,
+          );
+        };
+
+        applyStandingFootPlant(leftFoot, standingFootPlant.left);
+        applyStandingFootPlant(rightFoot, standingFootPlant.right);
+      }
+    } else {
+      standingFootPlantRef.current = null;
     }
 
     const recoveryState = recoveryStateRef.current;
@@ -1496,7 +1750,10 @@ export function CharacterCtrlrActiveRagdollPlayer({
       && (
         pelvisTilt > 1.05
         || chestTilt > 1.18
-        || supportHeight < 0.64
+        || (
+          supportHeight < 0.5
+          && (pelvisTilt > 0.35 || chestTilt > 0.42)
+        )
       );
     const moderateInstability =
       groundedAfterControl
@@ -1505,6 +1762,7 @@ export function CharacterCtrlrActiveRagdollPlayer({
         captureUrgency > 0.58
         || pelvisTilt > 0.44
         || chestTilt > 0.58
+        || (standingSupport && supportHeight < 0.92)
         || Math.abs(supportLateralError) > 0.18
         || Math.abs(supportForwardError) > 0.24
       );
@@ -1565,6 +1823,9 @@ export function CharacterCtrlrActiveRagdollPlayer({
       recoveryState.mode,
       recoveryProgress,
     );
+    if (standingSupport) {
+      phasePoseTargets = applyStandingPoseTargets(phasePoseTargets);
+    }
 
     const recoveryTorqueBoost =
       recoveryState.mode === "fallen"
@@ -1807,14 +2068,14 @@ export function CharacterCtrlrActiveRagdollPlayer({
     driveJointToPosition(
       jointRefs.hipLeft.current,
       MathUtils.clamp(phasePoseTargets.left.hip - airborneAmount * 0.04, -0.9, 0.7),
-      groundedAfterControl ? 20 : 11,
-      groundedAfterControl ? 4.4 : 2.8,
+      groundedAfterControl ? (standingSupport ? 34 : 20) : 11,
+      groundedAfterControl ? (standingSupport ? 7.8 : 4.4) : 2.8,
     );
     driveJointToPosition(
       jointRefs.hipRight.current,
       MathUtils.clamp(phasePoseTargets.right.hip - airborneAmount * 0.04, -0.9, 0.7),
-      groundedAfterControl ? 20 : 11,
-      groundedAfterControl ? 4.4 : 2.8,
+      groundedAfterControl ? (standingSupport ? 34 : 20) : 11,
+      groundedAfterControl ? (standingSupport ? 7.8 : 4.4) : 2.8,
     );
     driveJointToPosition(
       jointRefs.shoulderLeft.current,
@@ -1831,26 +2092,26 @@ export function CharacterCtrlrActiveRagdollPlayer({
     driveJointToPosition(
       jointRefs.kneeLeft.current,
       phasePoseTargets.left.knee,
-      groundedAfterControl ? 22 : 14,
-      groundedAfterControl ? 4.2 : 3,
+      groundedAfterControl ? (standingSupport ? 44 : 22) : 14,
+      groundedAfterControl ? (standingSupport ? 9.5 : 4.2) : 3,
     );
     driveJointToPosition(
       jointRefs.kneeRight.current,
       phasePoseTargets.right.knee,
-      groundedAfterControl ? 22 : 14,
-      groundedAfterControl ? 4.2 : 3,
+      groundedAfterControl ? (standingSupport ? 44 : 22) : 14,
+      groundedAfterControl ? (standingSupport ? 9.5 : 4.2) : 3,
     );
     driveJointToPosition(
       jointRefs.ankleLeft.current,
       phasePoseTargets.left.ankle,
-      groundedAfterControl ? 15 : 9,
-      groundedAfterControl ? 3.1 : 2.3,
+      groundedAfterControl ? (standingSupport ? 28 : 15) : 9,
+      groundedAfterControl ? (standingSupport ? 6.8 : 3.1) : 2.3,
     );
     driveJointToPosition(
       jointRefs.ankleRight.current,
       phasePoseTargets.right.ankle,
-      groundedAfterControl ? 15 : 9,
-      groundedAfterControl ? 3.1 : 2.3,
+      groundedAfterControl ? (standingSupport ? 28 : 15) : 9,
+      groundedAfterControl ? (standingSupport ? 6.8 : 3.1) : 2.3,
     );
     driveJointToPosition(
       jointRefs.elbowLeft.current,
