@@ -11,24 +11,24 @@ import {
 } from "react";
 import type { RevoluteImpulseJoint } from "@dimforge/rapier3d-compat";
 import { Euler, MathUtils, Quaternion, Vector3 } from "three";
-import { useMwendoStore, useMwendoStoreApi } from "../MwendoProvider";
-import { useMwendoKeyboardInput } from "../useMwendoKeyboardInput";
+import { useCharacterCtrlrStore, useCharacterCtrlrStoreApi } from "../CharacterCtrlrProvider";
+import { useCharacterCtrlrKeyboardInput } from "../useCharacterCtrlrKeyboardInput";
 import {
-  DEFAULT_MWENDO_INPUT,
-  mergeMwendoInput,
-  type MwendoInputState,
-  type MwendoMovementMode,
-  type MwendoPlayerSnapshot,
-  type MwendoSupportState,
-  type MwendoVec3,
+  DEFAULT_CHARACTER_CTRLR_INPUT,
+  mergeCharacterCtrlrInput,
+  type CharacterCtrlrInputState,
+  type CharacterCtrlrMovementMode,
+  type CharacterCtrlrPlayerSnapshot,
+  type CharacterCtrlrSupportState,
+  type CharacterCtrlrVec3,
 } from "../types";
 import {
-  createMwendoHumanoidBodyRefs,
-  createMwendoHumanoidRevoluteJointRefs,
-  type MwendoHumanoidBodyKey,
-  type MwendoHumanoidRevoluteJointRefs,
-} from "./MwendoHumanoidData";
-import { MwendoHumanoidRagdoll } from "./MwendoHumanoidRagdoll";
+  createCharacterCtrlrHumanoidBodyRefs,
+  createCharacterCtrlrHumanoidRevoluteJointRefs,
+  type CharacterCtrlrHumanoidBodyKey,
+  type CharacterCtrlrHumanoidRevoluteJointRefs,
+} from "./CharacterCtrlrHumanoidData";
+import { CharacterCtrlrHumanoidRagdoll } from "./CharacterCtrlrHumanoidRagdoll";
 
 const forward = new Vector3();
 const right = new Vector3();
@@ -50,11 +50,11 @@ const tempFootPosition = new Vector3();
 
 type SupportSide = "left" | "right";
 
-export type MwendoActiveRagdollPlayerProps = {
-  position?: MwendoVec3;
+export type CharacterCtrlrActiveRagdollPlayerProps = {
+  position?: CharacterCtrlrVec3;
   controls?: "keyboard" | "none";
-  input?: Partial<MwendoInputState>;
-  inputRef?: RefObject<MwendoInputState | null>;
+  input?: Partial<CharacterCtrlrInputState>;
+  inputRef?: RefObject<CharacterCtrlrInputState | null>;
   walkSpeed?: number;
   runSpeed?: number;
   crouchSpeed?: number;
@@ -68,14 +68,14 @@ export type MwendoActiveRagdollPlayerProps = {
   cameraFocusHeight?: number;
   cameraFocusLead?: number;
   debug?: boolean;
-  onSnapshotChange?: (snapshot: MwendoPlayerSnapshot) => void;
+  onSnapshotChange?: (snapshot: CharacterCtrlrPlayerSnapshot) => void;
   onMovementModeChange?: (
-    movementMode: MwendoMovementMode,
-    previousMovementMode: MwendoMovementMode,
+    movementMode: CharacterCtrlrMovementMode,
+    previousMovementMode: CharacterCtrlrMovementMode,
   ) => void;
   onGroundedChange?: (grounded: boolean) => void;
-  onJump?: (snapshot: MwendoPlayerSnapshot) => void;
-  onLand?: (snapshot: MwendoPlayerSnapshot) => void;
+  onJump?: (snapshot: CharacterCtrlrPlayerSnapshot) => void;
+  onLand?: (snapshot: CharacterCtrlrPlayerSnapshot) => void;
 };
 
 function angleDifference(current: number, target: number) {
@@ -88,7 +88,7 @@ function angleDifference(current: number, target: number) {
 function deriveSupportState(
   leftContactCount: number,
   rightContactCount: number,
-): MwendoSupportState {
+): CharacterCtrlrSupportState {
   if (leftContactCount > 0 && rightContactCount > 0) {
     return "double";
   }
@@ -118,7 +118,7 @@ function driveJointToPosition(
 }
 
 function deriveCommandEffort(
-  locomotionMode: MwendoMovementMode,
+  locomotionMode: CharacterCtrlrMovementMode,
   walkSpeed: number,
   runSpeed: number,
   crouchSpeed: number,
@@ -140,7 +140,7 @@ function deriveCommandEffort(
   return 0;
 }
 
-export function MwendoActiveRagdollPlayer({
+export function CharacterCtrlrActiveRagdollPlayer({
   position = [0, 2.5, 6],
   controls = "keyboard",
   input,
@@ -163,22 +163,22 @@ export function MwendoActiveRagdollPlayer({
   onGroundedChange,
   onJump,
   onLand,
-}: MwendoActiveRagdollPlayerProps) {
-  const storeApi = useMwendoStoreApi();
-  const setPlayerSnapshot = useMwendoStore((state) => state.setPlayerSnapshot);
-  const bodyRefs = useMemo(() => createMwendoHumanoidBodyRefs(), []);
-  const jointRefs = useMemo(() => createMwendoHumanoidRevoluteJointRefs(), []);
-  const keyboardInputRef = useMwendoKeyboardInput(controls === "keyboard");
-  const idleInputRef = useRef<MwendoInputState | null>({ ...DEFAULT_MWENDO_INPUT });
+}: CharacterCtrlrActiveRagdollPlayerProps) {
+  const storeApi = useCharacterCtrlrStoreApi();
+  const setPlayerSnapshot = useCharacterCtrlrStore((state) => state.setPlayerSnapshot);
+  const bodyRefs = useMemo(() => createCharacterCtrlrHumanoidBodyRefs(), []);
+  const jointRefs = useMemo(() => createCharacterCtrlrHumanoidRevoluteJointRefs(), []);
+  const keyboardInputRef = useCharacterCtrlrKeyboardInput(controls === "keyboard");
+  const idleInputRef = useRef<CharacterCtrlrInputState | null>({ ...DEFAULT_CHARACTER_CTRLR_INPUT });
   const groundedRef = useRef(false);
   const leftSupportContactsRef = useRef<Map<number, number>>(new Map());
   const rightSupportContactsRef = useRef<Map<number, number>>(new Map());
-  const supportStateRef = useRef<MwendoSupportState>("none");
-  const movementModeRef = useRef<MwendoMovementMode>("idle");
+  const supportStateRef = useRef<CharacterCtrlrSupportState>("none");
+  const movementModeRef = useRef<CharacterCtrlrMovementMode>("idle");
   const jumpHeldRef = useRef(false);
   const gaitPhaseRef = useRef(0);
-  const lastSnapshotRef = useRef<MwendoPlayerSnapshot | null>(null);
-  const focusPositionRef = useRef<MwendoVec3 | null>(null);
+  const lastSnapshotRef = useRef<CharacterCtrlrPlayerSnapshot | null>(null);
+  const focusPositionRef = useRef<CharacterCtrlrVec3 | null>(null);
   const initialPositionRef = useRef(position);
 
   const updateGrounded = (nextGrounded: boolean) => {
@@ -249,7 +249,7 @@ export function MwendoActiveRagdollPlayer({
     };
 
   useEffect(() => {
-    const initialSnapshot: MwendoPlayerSnapshot = {
+    const initialSnapshot: CharacterCtrlrPlayerSnapshot = {
       position: initialPositionRef.current,
       focusPosition: [
         initialPositionRef.current[0],
@@ -280,9 +280,9 @@ export function MwendoActiveRagdollPlayer({
 
     const internalInput =
       controls === "keyboard"
-        ? keyboardInputRef.current ?? DEFAULT_MWENDO_INPUT
-        : idleInputRef.current ?? DEFAULT_MWENDO_INPUT;
-    const keys = mergeMwendoInput(input, inputRef?.current, internalInput);
+        ? keyboardInputRef.current ?? DEFAULT_CHARACTER_CTRLR_INPUT
+        : idleInputRef.current ?? DEFAULT_CHARACTER_CTRLR_INPUT;
+    const keys = mergeCharacterCtrlrInput(input, inputRef?.current, internalInput);
     const { cameraYaw, playerFacing } = storeApi.getState();
 
     forward.set(-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw));
@@ -299,7 +299,7 @@ export function MwendoActiveRagdollPlayer({
       movement.normalize();
     }
 
-    const locomotionMode: MwendoMovementMode = keys.crouch
+    const locomotionMode: CharacterCtrlrMovementMode = keys.crouch
       ? "crouch"
       : hasMovementInput && keys.run
         ? "run"
@@ -495,7 +495,7 @@ export function MwendoActiveRagdollPlayer({
       ? currentVelocity.y + jumpImpulse
       : currentVelocity.y;
     const groundedAfterControl = groundedRef.current;
-    const nextMovementMode: MwendoMovementMode = groundedAfterControl
+    const nextMovementMode: CharacterCtrlrMovementMode = groundedAfterControl
       ? locomotionMode
       : predictedVelocityY > 0.35
         ? "jump"
@@ -851,7 +851,7 @@ export function MwendoActiveRagdollPlayer({
       onMovementModeChange?.(nextMovementMode, previousMovementMode);
     }
 
-    const snapshot: MwendoPlayerSnapshot = {
+    const snapshot: CharacterCtrlrPlayerSnapshot = {
       position: [rootPosition.x, rootPosition.y, rootPosition.z],
       focusPosition: focusPositionRef.current ?? undefined,
       velocity: [
@@ -879,7 +879,7 @@ export function MwendoActiveRagdollPlayer({
 
   const articulatedBodyProps: Partial<
     Record<
-      MwendoHumanoidBodyKey,
+      CharacterCtrlrHumanoidBodyKey,
       {
         additionalSolverIterations?: number;
         angularDamping?: number;
@@ -962,7 +962,7 @@ export function MwendoActiveRagdollPlayer({
   };
 
   return (
-    <MwendoHumanoidRagdoll
+    <CharacterCtrlrHumanoidRagdoll
       bodyProps={articulatedBodyProps}
       bodyRefs={bodyRefs}
       debug={debug}

@@ -13,19 +13,19 @@ import {
   type RefObject,
 } from "react";
 import { Color, DoubleSide, Quaternion, Vector3 } from "three";
-import type { MwendoVec3 } from "../types";
+import type { CharacterCtrlrVec3 } from "../types";
 
 type DebugShape =
   | {
       kind: "box";
-      size: MwendoVec3;
+      size: CharacterCtrlrVec3;
     }
   | {
       kind: "sphere";
       radius: number;
     };
 
-export type MwendoRagdollBodyDescriptor = {
+export type CharacterCtrlrRagdollBodyDescriptor = {
   key: string;
   label: string;
   ref: RefObject<RapierRigidBody | null>;
@@ -34,21 +34,21 @@ export type MwendoRagdollBodyDescriptor = {
   shape: DebugShape;
 };
 
-export type MwendoRagdollJointDescriptor = {
+export type CharacterCtrlrRagdollJointDescriptor = {
   key: string;
   kind: "fixed" | "spherical" | "revolute";
   bodyA: RefObject<RapierRigidBody | null>;
   bodyB: RefObject<RapierRigidBody | null>;
-  anchorA: MwendoVec3;
-  anchorB: MwendoVec3;
-  axis?: MwendoVec3;
+  anchorA: CharacterCtrlrVec3;
+  anchorB: CharacterCtrlrVec3;
+  axis?: CharacterCtrlrVec3;
   limits?: [number, number];
 };
 
-export type MwendoRagdollDebugProps = {
-  bodies: MwendoRagdollBodyDescriptor[];
-  joints: MwendoRagdollJointDescriptor[];
-  origin?: MwendoVec3;
+export type CharacterCtrlrRagdollDebugProps = {
+  bodies: CharacterCtrlrRagdollBodyDescriptor[];
+  joints: CharacterCtrlrRagdollJointDescriptor[];
+  origin?: CharacterCtrlrVec3;
   paused?: boolean;
   timeScale?: number;
   manualStepCount?: number;
@@ -61,10 +61,10 @@ type BodySnapshot = {
   color: string;
   mass: number;
   sleeping: boolean;
-  position: MwendoVec3;
+  position: CharacterCtrlrVec3;
   quaternion: [number, number, number, number];
-  linearVelocity: MwendoVec3;
-  angularVelocity: MwendoVec3;
+  linearVelocity: CharacterCtrlrVec3;
+  angularVelocity: CharacterCtrlrVec3;
   linearSpeed: number;
   angularSpeed: number;
 };
@@ -72,24 +72,24 @@ type BodySnapshot = {
 type TrailSnapshot = {
   key: string;
   sleeping: boolean;
-  points: MwendoVec3[];
+  points: CharacterCtrlrVec3[];
 };
 
 type JointSnapshot = {
   key: string;
   kind: "fixed" | "spherical" | "revolute";
-  anchorA: MwendoVec3;
-  anchorB: MwendoVec3;
-  frameAxes: [MwendoVec3, MwendoVec3, MwendoVec3];
-  axisWorld?: MwendoVec3;
+  anchorA: CharacterCtrlrVec3;
+  anchorB: CharacterCtrlrVec3;
+  frameAxes: [CharacterCtrlrVec3, CharacterCtrlrVec3, CharacterCtrlrVec3];
+  axisWorld?: CharacterCtrlrVec3;
   error: number;
   limits?: [number, number];
 };
 
 type ContactSnapshot = {
   key: string;
-  point: MwendoVec3;
-  normalEnd: MwendoVec3;
+  point: CharacterCtrlrVec3;
+  normalEnd: CharacterCtrlrVec3;
   intensity: number;
 };
 
@@ -104,7 +104,7 @@ type RagdollDebugSnapshot = {
   bodies: BodySnapshot[];
   joints: JointSnapshot[];
   contacts: ContactSnapshot[];
-  centerOfMass: MwendoVec3;
+  centerOfMass: CharacterCtrlrVec3;
   trails: TrailSnapshot[];
   ghosts: GhostSnapshot[];
   liveStepCount: number;
@@ -125,7 +125,7 @@ const tempVectorB = new Vector3();
 const tempQuaternion = new Quaternion();
 type RapierCollider = ReturnType<RapierRigidBody["collider"]>;
 
-function toTuple3(value: { x: number; y: number; z: number }): MwendoVec3 {
+function toTuple3(value: { x: number; y: number; z: number }): CharacterCtrlrVec3 {
   return [value.x, value.y, value.z];
 }
 
@@ -133,7 +133,7 @@ function toTuple4(value: { x: number; y: number; z: number; w: number }) {
   return [value.x, value.y, value.z, value.w] as [number, number, number, number];
 }
 
-function localize(point: { x: number; y: number; z: number }, origin: MwendoVec3): MwendoVec3 {
+function localize(point: { x: number; y: number; z: number }, origin: CharacterCtrlrVec3): CharacterCtrlrVec3 {
   return [point.x - origin[0], point.y - origin[1], point.z - origin[2]];
 }
 
@@ -151,8 +151,8 @@ function isValidCollider(
 
 function worldPointFromLocal(
   body: RapierRigidBody,
-  localPoint: MwendoVec3,
-  origin: MwendoVec3,
+  localPoint: CharacterCtrlrVec3,
+  origin: CharacterCtrlrVec3,
 ) {
   const translation = body.translation();
   const rotation = body.rotation();
@@ -167,7 +167,7 @@ function worldPointFromLocal(
   return localize(tempVector, origin);
 }
 
-function rotateLocalAxis(body: RapierRigidBody, axis: MwendoVec3): MwendoVec3 {
+function rotateLocalAxis(body: RapierRigidBody, axis: CharacterCtrlrVec3): CharacterCtrlrVec3 {
   const rotation = body.rotation();
 
   tempQuaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
@@ -177,7 +177,7 @@ function rotateLocalAxis(body: RapierRigidBody, axis: MwendoVec3): MwendoVec3 {
   return toTuple3(tempVector);
 }
 
-function buildFrameAxes(body: RapierRigidBody): [MwendoVec3, MwendoVec3, MwendoVec3] {
+function buildFrameAxes(body: RapierRigidBody): [CharacterCtrlrVec3, CharacterCtrlrVec3, CharacterCtrlrVec3] {
   return [
     rotateLocalAxis(body, [1, 0, 0]),
     rotateLocalAxis(body, [0, 1, 0]),
@@ -185,7 +185,7 @@ function buildFrameAxes(body: RapierRigidBody): [MwendoVec3, MwendoVec3, MwendoV
   ];
 }
 
-function distance(a: MwendoVec3, b: MwendoVec3) {
+function distance(a: CharacterCtrlrVec3, b: CharacterCtrlrVec3) {
   tempVector.set(a[0], a[1], a[2]);
   tempVectorB.set(b[0], b[1], b[2]);
 
@@ -208,9 +208,9 @@ function activityColor(body: BodySnapshot) {
 }
 
 function buildArcPoints(
-  center: MwendoVec3,
-  axis: MwendoVec3,
-  reference: MwendoVec3,
+  center: CharacterCtrlrVec3,
+  axis: CharacterCtrlrVec3,
+  reference: CharacterCtrlrVec3,
   radius: number,
   startAngle: number,
   endAngle: number,
@@ -284,7 +284,7 @@ function GhostShape({
   opacity,
 }: {
   shape: DebugShape;
-  position: MwendoVec3;
+  position: CharacterCtrlrVec3;
   quaternion: [number, number, number, number];
   opacity: number;
 }) {
@@ -320,12 +320,12 @@ function MassMarker({ body }: { body: BodySnapshot }) {
   );
 }
 
-function CenterOfMassMarker({ position }: { position: MwendoVec3 }) {
-  const top: MwendoVec3 = [position[0], position[1] + 0.7, position[2]];
-  const right: MwendoVec3 = [position[0] + 0.2, position[1], position[2]];
-  const left: MwendoVec3 = [position[0] - 0.2, position[1], position[2]];
-  const front: MwendoVec3 = [position[0], position[1], position[2] + 0.2];
-  const back: MwendoVec3 = [position[0], position[1], position[2] - 0.2];
+function CenterOfMassMarker({ position }: { position: CharacterCtrlrVec3 }) {
+  const top: CharacterCtrlrVec3 = [position[0], position[1] + 0.7, position[2]];
+  const right: CharacterCtrlrVec3 = [position[0] + 0.2, position[1], position[2]];
+  const left: CharacterCtrlrVec3 = [position[0] - 0.2, position[1], position[2]];
+  const front: CharacterCtrlrVec3 = [position[0], position[1], position[2] + 0.2];
+  const back: CharacterCtrlrVec3 = [position[0], position[1], position[2] - 0.2];
 
   return (
     <group renderOrder={12}>
@@ -351,7 +351,7 @@ function VelocityVector({ body }: { body: BodySnapshot }) {
     return null;
   }
 
-  const end: MwendoVec3 = [
+  const end: CharacterCtrlrVec3 = [
     body.position[0] + body.linearVelocity[0] * 0.18,
     body.position[1] + body.linearVelocity[1] * 0.18,
     body.position[2] + body.linearVelocity[2] * 0.18,
@@ -365,8 +365,8 @@ function AngularVelocityVector({ body }: { body: BodySnapshot }) {
     return null;
   }
 
-  const origin: MwendoVec3 = [body.position[0], body.position[1] + 0.12, body.position[2]];
-  const end: MwendoVec3 = [
+  const origin: CharacterCtrlrVec3 = [body.position[0], body.position[1] + 0.12, body.position[2]];
+  const end: CharacterCtrlrVec3 = [
     origin[0] + body.angularVelocity[0] * 0.12,
     origin[1] + body.angularVelocity[1] * 0.12,
     origin[2] + body.angularVelocity[2] * 0.12,
@@ -397,21 +397,21 @@ function AxisTripod({
   axes,
   scale = 0.24,
 }: {
-  origin: MwendoVec3;
-  axes: [MwendoVec3, MwendoVec3, MwendoVec3];
+  origin: CharacterCtrlrVec3;
+  axes: [CharacterCtrlrVec3, CharacterCtrlrVec3, CharacterCtrlrVec3];
   scale?: number;
 }) {
-  const xEnd: MwendoVec3 = [
+  const xEnd: CharacterCtrlrVec3 = [
     origin[0] + axes[0][0] * scale,
     origin[1] + axes[0][1] * scale,
     origin[2] + axes[0][2] * scale,
   ];
-  const yEnd: MwendoVec3 = [
+  const yEnd: CharacterCtrlrVec3 = [
     origin[0] + axes[1][0] * scale,
     origin[1] + axes[1][1] * scale,
     origin[2] + axes[1][2] * scale,
   ];
-  const zEnd: MwendoVec3 = [
+  const zEnd: CharacterCtrlrVec3 = [
     origin[0] + axes[2][0] * scale,
     origin[1] + axes[2][1] * scale,
     origin[2] + axes[2][2] * scale,
@@ -446,7 +446,7 @@ function JointDebug({ joint }: { joint: JointSnapshot }) {
         joint.anchorA[1] + joint.axisWorld[1] * 0.24,
         joint.anchorA[2] + joint.axisWorld[2] * 0.24,
       ],
-    ] as [MwendoVec3, MwendoVec3]);
+    ] as [CharacterCtrlrVec3, CharacterCtrlrVec3]);
 
   return (
     <group renderOrder={14}>
@@ -558,14 +558,14 @@ function DebugBoard({
 }
 
 function buildSnapshot(
-  bodies: MwendoRagdollBodyDescriptor[],
-  joints: MwendoRagdollJointDescriptor[],
-  origin: MwendoVec3,
+  bodies: CharacterCtrlrRagdollBodyDescriptor[],
+  joints: CharacterCtrlrRagdollJointDescriptor[],
+  origin: CharacterCtrlrVec3,
   world: ReturnType<typeof useRapier>["world"],
   colliderStates: ReturnType<typeof useRapier>["colliderStates"],
   liveStepCount: number,
   ghostSnapshots: MutableRefObject<GhostSnapshot[]>,
-  trailPoints: MutableRefObject<Record<string, MwendoVec3[]>>,
+  trailPoints: MutableRefObject<Record<string, CharacterCtrlrVec3[]>>,
   ghostId: MutableRefObject<number>,
   lastGhostAt: MutableRefObject<number>,
 ) {
@@ -630,9 +630,9 @@ function buildSnapshot(
             accumulator[2] += body.position[2] * body.mass;
             return accumulator;
           },
-          [0, 0, 0] as MwendoVec3,
-        ).map((value) => value / totalMass) as MwendoVec3)
-      : ([0, 0, 0] as MwendoVec3);
+          [0, 0, 0] as CharacterCtrlrVec3,
+        ).map((value) => value / totalMass) as CharacterCtrlrVec3)
+      : ([0, 0, 0] as CharacterCtrlrVec3);
 
   const jointSnapshots = joints.flatMap((joint) => {
     const bodyA = joint.bodyA.current;
@@ -702,7 +702,7 @@ function buildSnapshot(
           for (let index = 0; index < manifold.numSolverContacts(); index += 1) {
             const point = manifold.solverContactPoint(index);
             const localPoint = localize(point, origin);
-            const normalEnd: MwendoVec3 = [
+            const normalEnd: CharacterCtrlrVec3 = [
               localPoint[0] + normal.x * 0.42 * orientation,
               localPoint[1] + normal.y * 0.42 * orientation,
               localPoint[2] + normal.z * 0.42 * orientation,
@@ -766,17 +766,17 @@ function buildSnapshot(
   } satisfies RagdollDebugSnapshot;
 }
 
-export function MwendoRagdollDebug({
+export function CharacterCtrlrRagdollDebug({
   bodies,
   joints,
   origin = [0, 0, 0],
   paused = false,
   timeScale = 1,
   manualStepCount = 0,
-}: MwendoRagdollDebugProps) {
+}: CharacterCtrlrRagdollDebugProps) {
   const rapier = useRapier();
   const ghostSnapshots = useRef<GhostSnapshot[]>([]);
-  const trailPoints = useRef<Record<string, MwendoVec3[]>>({});
+  const trailPoints = useRef<Record<string, CharacterCtrlrVec3[]>>({});
   const ghostId = useRef(0);
   const lastGhostAt = useRef(0);
   const liveStepCount = useRef(0);
@@ -823,7 +823,7 @@ export function MwendoRagdollDebug({
   });
 
   return (
-    <group userData={{ mwendoIgnoreCameraOcclusion: true }}>
+    <group userData={{ characterCtrlrIgnoreCameraOcclusion: true }}>
       <DebugBoard
         liveStepCount={snapshot.liveStepCount}
         manualStepCount={manualStepCount}

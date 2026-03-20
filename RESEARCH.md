@@ -2,7 +2,7 @@
 
 This repo is now explicitly following a production-oriented active-ragdoll path for mobile and PC. The target is not a research demo that only looks good in one scene. The target is a deterministic, inspectable, shippable controller that can walk, run, jump, absorb impacts, and recover without requiring ML inference at runtime.
 
-The implementation decision for `mwendo` is:
+The implementation decision for `a-character-ctrlr` is:
 
 - use a `SIMBICON`-style finite-state locomotion controller as the core runtime architecture
 - add `capture point` and inverted-pendulum-inspired stepping heuristics for balance recovery and foot placement
@@ -36,7 +36,7 @@ Why it matters:
 - It shows how to combine a locomotion state machine with target joint poses and simple feedback terms.
 - It is explicitly aimed at dynamic biped locomotion rather than purely kinematic animation playback.
 
-Main ideas to carry into `mwendo`:
+Main ideas to carry into `a-character-ctrlr`:
 
 - locomotion is a sequence of stance/swing states, not a continuous unconstrained motor soup
 - each state has a target pose and a short list of feedback terms
@@ -45,7 +45,7 @@ Main ideas to carry into `mwendo`:
 
 Practical mapping to this repo:
 
-- `MwendoActiveRagdollPlayer.tsx` owns the gait FSM
+- `CharacterCtrlrActiveRagdollPlayer.tsx` owns the gait FSM
 - state outputs are target hip, knee, ankle, shoulder, elbow, and torso goals
 - transitions are driven by elapsed phase, support contact, and failure predicates
 - motor gains are phase-specific and movement-mode-specific
@@ -62,7 +62,7 @@ Why it matters:
 - This is the best follow-up once basic forward locomotion exists.
 - It broadens the controller space to forward motion, turning, speed changes, starts, stops, and other motion variants without abandoning a deterministic control architecture.
 
-Main ideas to carry into `mwendo`:
+Main ideas to carry into `a-character-ctrlr`:
 
 - locomotion should be parameterized by desired velocity and heading, not by a single hard-coded walk cycle
 - the controller should expose stride length, cadence, trunk lean, and foot-placement adjustments as functions of command state
@@ -86,7 +86,7 @@ Why it matters:
 - This paper provides the most useful compact balance heuristic for an active ragdoll that must decide whether it can recover in place or must step.
 - It gives a clear way to reason about recovery without needing a heavyweight whole-body optimizer.
 
-Main ideas to carry into `mwendo`:
+Main ideas to carry into `a-character-ctrlr`:
 
 - if the projected COM dynamics imply that balance cannot be recovered over the current support polygon, initiate a step
 - the simplest useful stepping target comes from the linear inverted pendulum model:
@@ -118,7 +118,7 @@ Why it matters:
 - This is more robotics-oriented than the other sources, but it is important for disciplined COM reasoning and future terrain-aware stepping.
 - It is the right conceptual reference if the controller later needs explicit preview-based footstep planning or tighter landing stability.
 
-Main ideas to carry into `mwendo`:
+Main ideas to carry into `a-character-ctrlr`:
 
 - maintain a clear distinction between commanded motion, COM motion, and support feasibility
 - use preview-like reasoning when choosing future support transitions on uneven ground
@@ -141,7 +141,7 @@ Why it matters:
 - This is the strongest reference for what the long-term active-ragdoll ceiling looks like.
 - It is especially relevant for impact recovery, stylized action transfer, and get-up behavior.
 
-Why it is not the default path for `mwendo` v1:
+Why it is not the default path for `a-character-ctrlr` v1:
 
 - training complexity is high
 - the runtime stack is much harder to inspect and regression-test
@@ -155,7 +155,7 @@ Practical mapping to this repo:
 
 ## Chosen production interpretation
 
-The literature-backed production plan for `mwendo` is:
+The literature-backed production plan for `a-character-ctrlr` is:
 
 1. `Reduced DOF articulated rig`
 2. `Finite-state active-ragdoll controller`

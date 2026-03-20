@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createMwendoStore } from "./MwendoProvider";
+import { createCharacterCtrlrStore } from "./CharacterCtrlrProvider";
 
-describe("createMwendoStore", () => {
+describe("createCharacterCtrlrStore", () => {
   it("respects initial state overrides", () => {
-    const store = createMwendoStore({
+    const store = createCharacterCtrlrStore({
       playerPosition: [1, 2, 3],
       playerFocusPosition: [1.5, 2.5, 3.5],
       playerVelocity: [0.1, 0.2, 0.3],
@@ -27,7 +27,7 @@ describe("createMwendoStore", () => {
   });
 
   it("updates the player snapshot as one payload", () => {
-    const store = createMwendoStore();
+    const store = createCharacterCtrlrStore();
 
     store.getState().setPlayerSnapshot({
       position: [4, 5, 6],
@@ -51,7 +51,7 @@ describe("createMwendoStore", () => {
   });
 
   it("clears a custom focus target when the next snapshot omits it", () => {
-    const store = createMwendoStore({
+    const store = createCharacterCtrlrStore({
       playerFocusPosition: [2, 3, 4],
     });
 
@@ -68,7 +68,7 @@ describe("createMwendoStore", () => {
   });
 
   it("clamps camera pitch while preserving yaw deltas", () => {
-    const store = createMwendoStore({
+    const store = createCharacterCtrlrStore({
       cameraYaw: 0,
       cameraPitch: 0,
     });

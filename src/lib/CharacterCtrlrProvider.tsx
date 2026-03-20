@@ -7,29 +7,29 @@ import {
 import { useStore } from "zustand";
 import { createStore, type StoreApi } from "zustand/vanilla";
 import type {
-  MwendoMovementMode,
-  MwendoPlayerSnapshot,
-  MwendoSupportState,
-  MwendoVec3,
+  CharacterCtrlrMovementMode,
+  CharacterCtrlrPlayerSnapshot,
+  CharacterCtrlrSupportState,
+  CharacterCtrlrVec3,
 } from "./types";
 
-export type MwendoControllerState = {
-  playerPosition: MwendoVec3;
-  playerFocusPosition: MwendoVec3 | null;
-  playerVelocity: MwendoVec3;
+export type CharacterCtrlrControllerState = {
+  playerPosition: CharacterCtrlrVec3;
+  playerFocusPosition: CharacterCtrlrVec3 | null;
+  playerVelocity: CharacterCtrlrVec3;
   playerFacing: number;
-  movementMode: MwendoMovementMode;
+  movementMode: CharacterCtrlrMovementMode;
   grounded: boolean;
-  supportState: MwendoSupportState;
+  supportState: CharacterCtrlrSupportState;
   cameraYaw: number;
   cameraPitch: number;
-  setPlayerSnapshot: (payload: MwendoPlayerSnapshot) => void;
+  setPlayerSnapshot: (payload: CharacterCtrlrPlayerSnapshot) => void;
   adjustCamera: (yawDelta: number, pitchDelta: number) => void;
 };
 
-export type MwendoStoreInit = Partial<
+export type CharacterCtrlrStoreInit = Partial<
   Pick<
-    MwendoControllerState,
+    CharacterCtrlrControllerState,
     | "playerPosition"
     | "playerFocusPosition"
     | "playerVelocity"
@@ -42,10 +42,10 @@ export type MwendoStoreInit = Partial<
   >
 >;
 
-export type MwendoStoreApi = StoreApi<MwendoControllerState>;
+export type CharacterCtrlrStoreApi = StoreApi<CharacterCtrlrControllerState>;
 
 const defaultState: Omit<
-  MwendoControllerState,
+  CharacterCtrlrControllerState,
   "setPlayerSnapshot" | "adjustCamera"
 > = {
   playerPosition: [0, 2.5, 6],
@@ -59,10 +59,10 @@ const defaultState: Omit<
   cameraPitch: -0.22,
 };
 
-export function createMwendoStore(
-  initialState: MwendoStoreInit = {},
-): MwendoStoreApi {
-  return createStore<MwendoControllerState>()((set) => ({
+export function createCharacterCtrlrStore(
+  initialState: CharacterCtrlrStoreInit = {},
+): CharacterCtrlrStoreApi {
+  return createStore<CharacterCtrlrControllerState>()((set) => ({
     ...defaultState,
     ...initialState,
     setPlayerSnapshot: ({
@@ -94,42 +94,42 @@ export function createMwendoStore(
   }));
 }
 
-const MwendoStoreContext = createContext<MwendoStoreApi | null>(null);
+const CharacterCtrlrStoreContext = createContext<CharacterCtrlrStoreApi | null>(null);
 
-export function MwendoProvider(props: {
+export function CharacterCtrlrProvider(props: {
   children: ReactNode;
-  initialState?: MwendoStoreInit;
+  initialState?: CharacterCtrlrStoreInit;
 }) {
-  const storeRef = useRef<MwendoStoreApi | null>(null);
+  const storeRef = useRef<CharacterCtrlrStoreApi | null>(null);
 
   if (!storeRef.current) {
-    storeRef.current = createMwendoStore(props.initialState);
+    storeRef.current = createCharacterCtrlrStore(props.initialState);
   }
 
   return (
-    <MwendoStoreContext.Provider value={storeRef.current}>
+    <CharacterCtrlrStoreContext.Provider value={storeRef.current}>
       {props.children}
-    </MwendoStoreContext.Provider>
+    </CharacterCtrlrStoreContext.Provider>
   );
 }
 
-export function useMwendoStore<T>(
-  selector: (state: MwendoControllerState) => T,
+export function useCharacterCtrlrStore<T>(
+  selector: (state: CharacterCtrlrControllerState) => T,
 ) {
-  const store = useContext(MwendoStoreContext);
+  const store = useContext(CharacterCtrlrStoreContext);
 
   if (!store) {
-    throw new Error("Mwendo components must be rendered inside <MwendoProvider />.");
+    throw new Error("CharacterCtrlr components must be rendered inside <CharacterCtrlrProvider />.");
   }
 
   return useStore(store, selector);
 }
 
-export function useMwendoStoreApi() {
-  const store = useContext(MwendoStoreContext);
+export function useCharacterCtrlrStoreApi() {
+  const store = useContext(CharacterCtrlrStoreContext);
 
   if (!store) {
-    throw new Error("Mwendo components must be rendered inside <MwendoProvider />.");
+    throw new Error("CharacterCtrlr components must be rendered inside <CharacterCtrlrProvider />.");
   }
 
   return store;

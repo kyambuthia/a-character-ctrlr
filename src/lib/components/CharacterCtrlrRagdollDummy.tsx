@@ -1,23 +1,23 @@
-import type { MwendoVec3 } from "../types";
-import { MwendoHumanoidRagdoll } from "./MwendoHumanoidRagdoll";
+import type { CharacterCtrlrVec3 } from "../types";
+import { CharacterCtrlrHumanoidRagdoll } from "./CharacterCtrlrHumanoidRagdoll";
 
-export type MwendoRagdollDummyProps = {
-  position?: MwendoVec3;
+export type CharacterCtrlrRagdollDummyProps = {
+  position?: CharacterCtrlrVec3;
   debug?: boolean;
   paused?: boolean;
   timeScale?: number;
   manualStepCount?: number;
 };
 
-export function MwendoRagdollDummy({
+export function CharacterCtrlrRagdollDummy({
   position = [0, 4.5, 0],
   debug = false,
   paused = false,
   timeScale = 1,
   manualStepCount = 0,
-}: MwendoRagdollDummyProps) {
+}: CharacterCtrlrRagdollDummyProps) {
   return (
-    <MwendoHumanoidRagdoll
+    <CharacterCtrlrHumanoidRagdoll
       debug={debug}
       manualStepCount={manualStepCount}
       paused={paused}

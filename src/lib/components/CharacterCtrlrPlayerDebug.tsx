@@ -20,7 +20,7 @@ import {
   type Group,
   type Mesh,
 } from "three";
-import type { MwendoMovementMode, MwendoSupportState, MwendoVec3 } from "../types";
+import type { CharacterCtrlrMovementMode, CharacterCtrlrSupportState, CharacterCtrlrVec3 } from "../types";
 
 type JointRefMap = {
   pelvisRef: RefObject<Group | null>;
@@ -38,52 +38,52 @@ type JointRefMap = {
 
 type PlayerDebugStateRef = RefObject<{
   facing: number;
-  movementMode: MwendoMovementMode;
+  movementMode: CharacterCtrlrMovementMode;
   grounded: boolean;
-  supportState: MwendoSupportState;
+  supportState: CharacterCtrlrSupportState;
 } | null>;
 
 type JointSnapshot = {
   key: string;
-  position: MwendoVec3;
+  position: CharacterCtrlrVec3;
 };
 
 type ContactSnapshot = {
   key: string;
-  point: MwendoVec3;
-  normalEnd: MwendoVec3;
+  point: CharacterCtrlrVec3;
+  normalEnd: CharacterCtrlrVec3;
   intensity: number;
 };
 
 type GhostSnapshot = {
   id: number;
-  position: MwendoVec3;
+  position: CharacterCtrlrVec3;
   quaternion: [number, number, number, number];
   sleeping: boolean;
 };
 
 type PlayerDebugSnapshot = {
-  bodyPosition: MwendoVec3;
+  bodyPosition: CharacterCtrlrVec3;
   bodyQuaternion: [number, number, number, number];
-  velocityEnd: MwendoVec3;
-  facingEnd: MwendoVec3;
-  movementMode: MwendoMovementMode;
+  velocityEnd: CharacterCtrlrVec3;
+  facingEnd: CharacterCtrlrVec3;
+  movementMode: CharacterCtrlrMovementMode;
   grounded: boolean;
-  supportState: MwendoSupportState;
+  supportState: CharacterCtrlrSupportState;
   sleeping: boolean;
   mass: number;
-  linearVelocity: MwendoVec3;
-  angularVelocity: MwendoVec3;
+  linearVelocity: CharacterCtrlrVec3;
+  angularVelocity: CharacterCtrlrVec3;
   linearSpeed: number;
   angularSpeed: number;
   joints: JointSnapshot[];
   contacts: ContactSnapshot[];
-  trail: MwendoVec3[];
+  trail: CharacterCtrlrVec3[];
   ghosts: GhostSnapshot[];
   liveStepCount: number;
 };
 
-type MwendoPlayerDebugProps = {
+type CharacterCtrlrPlayerDebugProps = {
   bodyRef: RefObject<RapierRigidBody | null>;
   capsuleHalfHeight: number;
   capsuleRadius: number;
@@ -129,7 +129,7 @@ const linkPairs = [
   ["rightUpperLeg", "rightLowerLeg"],
 ] as const;
 
-function toTuple3(value: { x: number; y: number; z: number }): MwendoVec3 {
+function toTuple3(value: { x: number; y: number; z: number }): CharacterCtrlrVec3 {
   return [value.x, value.y, value.z];
 }
 
@@ -163,7 +163,7 @@ function activityColor(snapshot: PlayerDebugSnapshot) {
   return mixColor("#8cf0c6", "#ff7b60", energy);
 }
 
-function capsuleCenter(position: MwendoVec3, capsuleHalfHeight: number, capsuleRadius: number): MwendoVec3 {
+function capsuleCenter(position: CharacterCtrlrVec3, capsuleHalfHeight: number, capsuleRadius: number): CharacterCtrlrVec3 {
   return [
     position[0],
     position[1] + capsuleHalfHeight + capsuleRadius,
@@ -277,12 +277,12 @@ function AngularVelocityVector({ snapshot }: { snapshot: PlayerDebugSnapshot }) 
     return null;
   }
 
-  const origin: MwendoVec3 = [
+  const origin: CharacterCtrlrVec3 = [
     snapshot.bodyPosition[0],
     snapshot.bodyPosition[1] + 0.12,
     snapshot.bodyPosition[2],
   ];
-  const end: MwendoVec3 = [
+  const end: CharacterCtrlrVec3 = [
     origin[0] + snapshot.angularVelocity[0] * 0.12,
     origin[1] + snapshot.angularVelocity[1] * 0.12,
     origin[2] + snapshot.angularVelocity[2] * 0.12,
@@ -291,7 +291,7 @@ function AngularVelocityVector({ snapshot }: { snapshot: PlayerDebugSnapshot }) 
   return <Line color="#ff7bf3" depthTest={false} lineWidth={1.2} points={[origin, end]} />;
 }
 
-function TrailLine({ trail, grounded }: { trail: MwendoVec3[]; grounded: boolean }) {
+function TrailLine({ trail, grounded }: { trail: CharacterCtrlrVec3[]; grounded: boolean }) {
   if (trail.length < 2) {
     return null;
   }
@@ -308,12 +308,12 @@ function TrailLine({ trail, grounded }: { trail: MwendoVec3[]; grounded: boolean
   );
 }
 
-function CenterOfMassMarker({ position }: { position: MwendoVec3 }) {
-  const top: MwendoVec3 = [position[0], position[1] + 0.7, position[2]];
-  const right: MwendoVec3 = [position[0] + 0.2, position[1], position[2]];
-  const left: MwendoVec3 = [position[0] - 0.2, position[1], position[2]];
-  const front: MwendoVec3 = [position[0], position[1], position[2] + 0.2];
-  const back: MwendoVec3 = [position[0], position[1], position[2] - 0.2];
+function CenterOfMassMarker({ position }: { position: CharacterCtrlrVec3 }) {
+  const top: CharacterCtrlrVec3 = [position[0], position[1] + 0.7, position[2]];
+  const right: CharacterCtrlrVec3 = [position[0] + 0.2, position[1], position[2]];
+  const left: CharacterCtrlrVec3 = [position[0] - 0.2, position[1], position[2]];
+  const front: CharacterCtrlrVec3 = [position[0], position[1], position[2] + 0.2];
+  const back: CharacterCtrlrVec3 = [position[0], position[1], position[2] - 0.2];
 
   return (
     <group renderOrder={12}>
@@ -437,7 +437,7 @@ function buildSnapshot(
   world: ReturnType<typeof useRapier>["world"],
   colliderStates: ReturnType<typeof useRapier>["colliderStates"],
   liveStepCount: number,
-  trailPoints: MutableRefObject<MwendoVec3[]>,
+  trailPoints: MutableRefObject<CharacterCtrlrVec3[]>,
   ghostSnapshots: MutableRefObject<GhostSnapshot[]>,
   ghostId: MutableRefObject<number>,
   lastGhostAt: MutableRefObject<number>,
@@ -455,15 +455,15 @@ function buildSnapshot(
   const angularVelocity = body.angvel();
   const velocityScale = 0.2;
   const facingScale = 1;
-  const bodyPosition: MwendoVec3 = [translation.x, translation.y, translation.z];
+  const bodyPosition: CharacterCtrlrVec3 = [translation.x, translation.y, translation.z];
   const linearSpeed = Math.hypot(linearVelocity.x, linearVelocity.y, linearVelocity.z);
   const angularSpeed = Math.hypot(angularVelocity.x, angularVelocity.y, angularVelocity.z);
-  const velocityEnd: MwendoVec3 = [
+  const velocityEnd: CharacterCtrlrVec3 = [
     translation.x + linearVelocity.x * velocityScale,
     translation.y + 0.35 + linearVelocity.y * velocityScale,
     translation.z + linearVelocity.z * velocityScale,
   ];
-  const facingEnd: MwendoVec3 = [
+  const facingEnd: CharacterCtrlrVec3 = [
     translation.x + Math.sin(debugState.facing) * facingScale,
     translation.y + 0.6,
     translation.z + Math.cos(debugState.facing) * facingScale,
@@ -517,8 +517,8 @@ function buildSnapshot(
 
         for (let contactIndex = 0; contactIndex < manifold.numSolverContacts(); contactIndex += 1) {
           const point = manifold.solverContactPoint(contactIndex);
-          const localPoint: MwendoVec3 = [point.x, point.y, point.z];
-          const normalEnd: MwendoVec3 = [
+          const localPoint: CharacterCtrlrVec3 = [point.x, point.y, point.z];
+          const normalEnd: CharacterCtrlrVec3 = [
             localPoint[0] + normal.x * 0.42 * orientation,
             localPoint[1] + normal.y * 0.42 * orientation,
             localPoint[2] + normal.z * 0.42 * orientation,
@@ -581,7 +581,7 @@ function buildSnapshot(
   } satisfies PlayerDebugSnapshot;
 }
 
-export function MwendoPlayerDebug({
+export function CharacterCtrlrPlayerDebug({
   bodyRef,
   capsuleHalfHeight,
   capsuleRadius,
@@ -590,12 +590,12 @@ export function MwendoPlayerDebug({
   paused = false,
   timeScale = 1,
   manualStepCount = 0,
-}: MwendoPlayerDebugProps) {
+}: CharacterCtrlrPlayerDebugProps) {
   const rapier = useRapier();
   const [snapshot, setSnapshot] = useState<PlayerDebugSnapshot>(EMPTY_DEBUG_SNAPSHOT);
   const capsuleMeshRef = useRef<Mesh>(null);
   const liveStepCount = useRef(0);
-  const trailPoints = useRef<MwendoVec3[]>([]);
+  const trailPoints = useRef<CharacterCtrlrVec3[]>([]);
   const ghostSnapshots = useRef<GhostSnapshot[]>([]);
   const ghostId = useRef(0);
   const lastGhostAt = useRef(0);
@@ -659,7 +659,7 @@ export function MwendoPlayerDebug({
   const jointMap = new Map(snapshot.joints.map((joint) => [joint.key, joint.position]));
 
   return (
-    <group userData={{ mwendoIgnoreCameraOcclusion: true }}>
+    <group userData={{ characterCtrlrIgnoreCameraOcclusion: true }}>
       <DebugBoard
         liveStepCount={snapshot.liveStepCount}
         manualStepCount={manualStepCount}

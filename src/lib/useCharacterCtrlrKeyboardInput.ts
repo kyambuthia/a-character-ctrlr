@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 import {
-  DEFAULT_MWENDO_INPUT,
-  type MwendoInputState,
+  DEFAULT_CHARACTER_CTRLR_INPUT,
+  type CharacterCtrlrInputState,
 } from "./types";
 
-const keyMap: Record<string, keyof MwendoInputState> = {
+const keyMap: Record<string, keyof CharacterCtrlrInputState> = {
   ArrowUp: "forward",
   KeyW: "forward",
   ArrowDown: "backward",
@@ -38,12 +38,12 @@ function isEditableTarget(target: EventTarget | null) {
   );
 }
 
-export function useMwendoKeyboardInput(enabled = true) {
-  const stateRef = useRef<MwendoInputState>({ ...DEFAULT_MWENDO_INPUT });
+export function useCharacterCtrlrKeyboardInput(enabled = true) {
+  const stateRef = useRef<CharacterCtrlrInputState>({ ...DEFAULT_CHARACTER_CTRLR_INPUT });
 
   useEffect(() => {
     if (!enabled) {
-      stateRef.current = { ...DEFAULT_MWENDO_INPUT };
+      stateRef.current = { ...DEFAULT_CHARACTER_CTRLR_INPUT };
       return;
     }
 
@@ -59,7 +59,7 @@ export function useMwendoKeyboardInput(enabled = true) {
     };
 
     const handleBlur = () => {
-      stateRef.current = { ...DEFAULT_MWENDO_INPUT };
+      stateRef.current = { ...DEFAULT_CHARACTER_CTRLR_INPUT };
     };
 
     const onKeyDown = handleKey(true);

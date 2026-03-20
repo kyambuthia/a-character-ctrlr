@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_MWENDO_INPUT, mergeMwendoInput } from "./types";
+import { DEFAULT_CHARACTER_CTRLR_INPUT, mergeCharacterCtrlrInput } from "./types";
 
-describe("mergeMwendoInput", () => {
+describe("mergeCharacterCtrlrInput", () => {
   it("keeps the default all-false shape", () => {
-    expect(DEFAULT_MWENDO_INPUT).toEqual({
+    expect(DEFAULT_CHARACTER_CTRLR_INPUT).toEqual({
       forward: false,
       backward: false,
       left: false,
@@ -16,7 +16,7 @@ describe("mergeMwendoInput", () => {
 
   it("merges multiple partial inputs additively", () => {
     expect(
-      mergeMwendoInput(
+      mergeCharacterCtrlrInput(
         { forward: true, run: true },
         { right: true },
         { crouch: false, jump: true },
@@ -34,7 +34,7 @@ describe("mergeMwendoInput", () => {
 
   it("ignores nullish sources", () => {
     expect(
-      mergeMwendoInput(
+      mergeCharacterCtrlrInput(
         undefined,
         null,
         { backward: true, left: true },

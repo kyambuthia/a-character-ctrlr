@@ -1,4 +1,4 @@
-export type MwendoMovementMode =
+export type CharacterCtrlrMovementMode =
   | "idle"
   | "walk"
   | "run"
@@ -6,11 +6,11 @@ export type MwendoMovementMode =
   | "jump"
   | "fall";
 
-export type MwendoSupportState = "none" | "left" | "right" | "double";
+export type CharacterCtrlrSupportState = "none" | "left" | "right" | "double";
 
-export type MwendoVec3 = [number, number, number];
+export type CharacterCtrlrVec3 = [number, number, number];
 
-export type MwendoInputState = {
+export type CharacterCtrlrInputState = {
   forward: boolean;
   backward: boolean;
   left: boolean;
@@ -20,17 +20,17 @@ export type MwendoInputState = {
   jump: boolean;
 };
 
-export type MwendoPlayerSnapshot = {
-  position: MwendoVec3;
-  focusPosition?: MwendoVec3;
+export type CharacterCtrlrPlayerSnapshot = {
+  position: CharacterCtrlrVec3;
+  focusPosition?: CharacterCtrlrVec3;
   facing: number;
-  movementMode: MwendoMovementMode;
+  movementMode: CharacterCtrlrMovementMode;
   grounded: boolean;
-  supportState: MwendoSupportState;
-  velocity: MwendoVec3;
+  supportState: CharacterCtrlrSupportState;
+  velocity: CharacterCtrlrVec3;
 };
 
-export const DEFAULT_MWENDO_INPUT: MwendoInputState = {
+export const DEFAULT_CHARACTER_CTRLR_INPUT: CharacterCtrlrInputState = {
   forward: false,
   backward: false,
   left: false,
@@ -40,10 +40,10 @@ export const DEFAULT_MWENDO_INPUT: MwendoInputState = {
   jump: false,
 };
 
-export function mergeMwendoInput(
-  ...inputs: Array<Partial<MwendoInputState> | null | undefined>
-): MwendoInputState {
-  return inputs.reduce<MwendoInputState>(
+export function mergeCharacterCtrlrInput(
+  ...inputs: Array<Partial<CharacterCtrlrInputState> | null | undefined>
+): CharacterCtrlrInputState {
+  return inputs.reduce<CharacterCtrlrInputState>(
     (accumulator, input) => ({
       forward: accumulator.forward || Boolean(input?.forward),
       backward: accumulator.backward || Boolean(input?.backward),
@@ -53,6 +53,6 @@ export function mergeMwendoInput(
       crouch: accumulator.crouch || Boolean(input?.crouch),
       jump: accumulator.jump || Boolean(input?.jump),
     }),
-    { ...DEFAULT_MWENDO_INPUT },
+    { ...DEFAULT_CHARACTER_CTRLR_INPUT },
   );
 }

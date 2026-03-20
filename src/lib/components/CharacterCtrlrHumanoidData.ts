@@ -1,11 +1,11 @@
 import type { RevoluteImpulseJoint } from "@dimforge/rapier3d-compat";
 import { createRef, type MutableRefObject, type RefObject } from "react";
 import type { RapierRigidBody } from "@react-three/rapier";
-import type { MwendoVec3 } from "../types";
+import type { CharacterCtrlrVec3 } from "../types";
 
-type MwendoQuat = [number, number, number, number];
+type CharacterCtrlrQuat = [number, number, number, number];
 
-export type MwendoHumanoidBodyKey =
+export type CharacterCtrlrHumanoidBodyKey =
   | "pelvis"
   | "chest"
   | "head"
@@ -22,53 +22,53 @@ export type MwendoHumanoidBodyKey =
   | "lowerLegRight"
   | "footRight";
 
-export type MwendoHumanoidBodyShape =
+export type CharacterCtrlrHumanoidBodyShape =
   | {
       kind: "box";
-      size: MwendoVec3;
+      size: CharacterCtrlrVec3;
     }
   | {
       kind: "sphere";
       radius: number;
     };
 
-export type MwendoHumanoidBodyDefinition = {
-  key: MwendoHumanoidBodyKey;
+export type CharacterCtrlrHumanoidBodyDefinition = {
+  key: CharacterCtrlrHumanoidBodyKey;
   label: string;
-  position: MwendoVec3;
+  position: CharacterCtrlrVec3;
   mass: number;
   color: string;
   collider: "cuboid" | "ball";
-  shape: MwendoHumanoidBodyShape;
-  meshOffset?: MwendoVec3;
+  shape: CharacterCtrlrHumanoidBodyShape;
+  meshOffset?: CharacterCtrlrVec3;
   roughness?: number;
 };
 
-export type MwendoHumanoidSphericalJointDefinition = {
-  key: MwendoHumanoidSphericalJointKey;
+export type CharacterCtrlrHumanoidSphericalJointDefinition = {
+  key: CharacterCtrlrHumanoidSphericalJointKey;
   kind: "spherical";
-  bodyA: MwendoHumanoidBodyKey;
-  bodyB: MwendoHumanoidBodyKey;
-  anchorA: MwendoVec3;
-  anchorB: MwendoVec3;
+  bodyA: CharacterCtrlrHumanoidBodyKey;
+  bodyB: CharacterCtrlrHumanoidBodyKey;
+  anchorA: CharacterCtrlrVec3;
+  anchorB: CharacterCtrlrVec3;
 };
 
-export type MwendoHumanoidSphericalJointKey = "spine";
+export type CharacterCtrlrHumanoidSphericalJointKey = "spine";
 
-export type MwendoHumanoidFixedJointKey = "neck";
+export type CharacterCtrlrHumanoidFixedJointKey = "neck";
 
-export type MwendoHumanoidFixedJointDefinition = {
-  key: MwendoHumanoidFixedJointKey;
+export type CharacterCtrlrHumanoidFixedJointDefinition = {
+  key: CharacterCtrlrHumanoidFixedJointKey;
   kind: "fixed";
-  bodyA: MwendoHumanoidBodyKey;
-  bodyB: MwendoHumanoidBodyKey;
-  anchorA: MwendoVec3;
-  anchorB: MwendoVec3;
-  frameA: MwendoQuat;
-  frameB: MwendoQuat;
+  bodyA: CharacterCtrlrHumanoidBodyKey;
+  bodyB: CharacterCtrlrHumanoidBodyKey;
+  anchorA: CharacterCtrlrVec3;
+  anchorB: CharacterCtrlrVec3;
+  frameA: CharacterCtrlrQuat;
+  frameB: CharacterCtrlrQuat;
 };
 
-export type MwendoHumanoidRevoluteJointKey =
+export type CharacterCtrlrHumanoidRevoluteJointKey =
   | "shoulderLeft"
   | "shoulderRight"
   | "hipLeft"
@@ -82,33 +82,33 @@ export type MwendoHumanoidRevoluteJointKey =
   | "kneeRight"
   | "ankleRight";
 
-export type MwendoHumanoidRevoluteJointDefinition = {
-  key: MwendoHumanoidRevoluteJointKey;
+export type CharacterCtrlrHumanoidRevoluteJointDefinition = {
+  key: CharacterCtrlrHumanoidRevoluteJointKey;
   kind: "revolute";
-  bodyA: MwendoHumanoidBodyKey;
-  bodyB: MwendoHumanoidBodyKey;
-  anchorA: MwendoVec3;
-  anchorB: MwendoVec3;
-  axis: MwendoVec3;
+  bodyA: CharacterCtrlrHumanoidBodyKey;
+  bodyB: CharacterCtrlrHumanoidBodyKey;
+  anchorA: CharacterCtrlrVec3;
+  anchorB: CharacterCtrlrVec3;
+  axis: CharacterCtrlrVec3;
   limits: [number, number];
 };
 
-export type MwendoHumanoidJointDefinition =
-  | MwendoHumanoidFixedJointDefinition
-  | MwendoHumanoidSphericalJointDefinition
-  | MwendoHumanoidRevoluteJointDefinition;
+export type CharacterCtrlrHumanoidJointDefinition =
+  | CharacterCtrlrHumanoidFixedJointDefinition
+  | CharacterCtrlrHumanoidSphericalJointDefinition
+  | CharacterCtrlrHumanoidRevoluteJointDefinition;
 
-export type MwendoHumanoidBodyRefs = Record<
-  MwendoHumanoidBodyKey,
+export type CharacterCtrlrHumanoidBodyRefs = Record<
+  CharacterCtrlrHumanoidBodyKey,
   RefObject<RapierRigidBody | null>
 >;
 
-export type MwendoHumanoidRevoluteJointRefs = Record<
-  MwendoHumanoidRevoluteJointKey,
+export type CharacterCtrlrHumanoidRevoluteJointRefs = Record<
+  CharacterCtrlrHumanoidRevoluteJointKey,
   MutableRefObject<RevoluteImpulseJoint | null>
 >;
 
-export const MWENDO_HUMANOID_BODY_DEFINITIONS: MwendoHumanoidBodyDefinition[] = [
+export const CHARACTER_CTRLR_HUMANOID_BODY_DEFINITIONS: CharacterCtrlrHumanoidBodyDefinition[] = [
   {
     key: "pelvis",
     label: "Pelvis",
@@ -253,7 +253,7 @@ export const MWENDO_HUMANOID_BODY_DEFINITIONS: MwendoHumanoidBodyDefinition[] = 
   },
 ];
 
-export const MWENDO_HUMANOID_SPHERICAL_JOINT_DEFINITIONS: MwendoHumanoidSphericalJointDefinition[] =
+export const CHARACTER_CTRLR_HUMANOID_SPHERICAL_JOINT_DEFINITIONS: CharacterCtrlrHumanoidSphericalJointDefinition[] =
   [
     {
       key: "spine",
@@ -265,7 +265,7 @@ export const MWENDO_HUMANOID_SPHERICAL_JOINT_DEFINITIONS: MwendoHumanoidSpherica
     },
   ];
 
-export const MWENDO_HUMANOID_FIXED_JOINT_DEFINITIONS: MwendoHumanoidFixedJointDefinition[] =
+export const CHARACTER_CTRLR_HUMANOID_FIXED_JOINT_DEFINITIONS: CharacterCtrlrHumanoidFixedJointDefinition[] =
   [
     {
       key: "neck",
@@ -279,7 +279,7 @@ export const MWENDO_HUMANOID_FIXED_JOINT_DEFINITIONS: MwendoHumanoidFixedJointDe
     },
   ];
 
-export const MWENDO_HUMANOID_REVOLUTE_JOINT_DEFINITIONS: MwendoHumanoidRevoluteJointDefinition[] =
+export const CHARACTER_CTRLR_HUMANOID_REVOLUTE_JOINT_DEFINITIONS: CharacterCtrlrHumanoidRevoluteJointDefinition[] =
   [
     {
       key: "shoulderLeft",
@@ -403,13 +403,13 @@ export const MWENDO_HUMANOID_REVOLUTE_JOINT_DEFINITIONS: MwendoHumanoidRevoluteJ
     },
   ];
 
-export const MWENDO_HUMANOID_JOINT_DEFINITIONS: MwendoHumanoidJointDefinition[] = [
-  ...MWENDO_HUMANOID_FIXED_JOINT_DEFINITIONS,
-  ...MWENDO_HUMANOID_SPHERICAL_JOINT_DEFINITIONS,
-  ...MWENDO_HUMANOID_REVOLUTE_JOINT_DEFINITIONS,
+export const CHARACTER_CTRLR_HUMANOID_JOINT_DEFINITIONS: CharacterCtrlrHumanoidJointDefinition[] = [
+  ...CHARACTER_CTRLR_HUMANOID_FIXED_JOINT_DEFINITIONS,
+  ...CHARACTER_CTRLR_HUMANOID_SPHERICAL_JOINT_DEFINITIONS,
+  ...CHARACTER_CTRLR_HUMANOID_REVOLUTE_JOINT_DEFINITIONS,
 ];
 
-export function createMwendoHumanoidBodyRefs(): MwendoHumanoidBodyRefs {
+export function createCharacterCtrlrHumanoidBodyRefs(): CharacterCtrlrHumanoidBodyRefs {
   return {
     pelvis: createRef<RapierRigidBody>(),
     chest: createRef<RapierRigidBody>(),
@@ -429,7 +429,7 @@ export function createMwendoHumanoidBodyRefs(): MwendoHumanoidBodyRefs {
   };
 }
 
-export function createMwendoHumanoidRevoluteJointRefs(): MwendoHumanoidRevoluteJointRefs {
+export function createCharacterCtrlrHumanoidRevoluteJointRefs(): CharacterCtrlrHumanoidRevoluteJointRefs {
   return {
     shoulderLeft: { current: null },
     shoulderRight: { current: null },

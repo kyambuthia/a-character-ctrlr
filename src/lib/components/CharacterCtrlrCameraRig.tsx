@@ -1,8 +1,8 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import { Euler, Object3D, Raycaster, Vector3 } from "three";
-import { useMwendoStore, useMwendoStoreApi } from "../MwendoProvider";
-import type { MwendoVec3 } from "../types";
+import { useCharacterCtrlrStore, useCharacterCtrlrStoreApi } from "../CharacterCtrlrProvider";
+import type { CharacterCtrlrVec3 } from "../types";
 
 const focus = new Vector3();
 const desiredPosition = new Vector3();
@@ -10,13 +10,13 @@ const correctedPosition = new Vector3();
 const rayDirection = new Vector3();
 const rotation = new Euler(0, 0, 0, "YXZ");
 const occlusionRaycaster = new Raycaster();
-const MWENDO_IGNORE_CAMERA_OCCLUSION = "mwendoIgnoreCameraOcclusion";
+const CHARACTER_CTRLR_IGNORE_CAMERA_OCCLUSION = "characterCtrlrIgnoreCameraOcclusion";
 
 function shouldIgnoreCameraOcclusion(object: Object3D | null) {
   let current: Object3D | null = object;
 
   while (current) {
-    if (current.userData?.[MWENDO_IGNORE_CAMERA_OCCLUSION]) {
+    if (current.userData?.[CHARACTER_CTRLR_IGNORE_CAMERA_OCCLUSION]) {
       return true;
     }
 
@@ -26,8 +26,8 @@ function shouldIgnoreCameraOcclusion(object: Object3D | null) {
   return false;
 }
 
-export type MwendoCameraRigProps = {
-  followOffset?: MwendoVec3;
+export type CharacterCtrlrCameraRigProps = {
+  followOffset?: CharacterCtrlrVec3;
   focusHeight?: number;
   pointerLock?: boolean;
   yawSensitivity?: number;
@@ -38,7 +38,7 @@ export type MwendoCameraRigProps = {
   minCollisionDistance?: number;
 };
 
-export function MwendoCameraRig({
+export function CharacterCtrlrCameraRig({
   followOffset = [0, 1.85, 5.1],
   focusHeight = 1.2,
   pointerLock = true,
@@ -48,12 +48,12 @@ export function MwendoCameraRig({
   collisionEnabled = true,
   collisionPadding = 0.18,
   minCollisionDistance = 1.2,
-}: MwendoCameraRigProps) {
+}: CharacterCtrlrCameraRigProps) {
   const gl = useThree((state) => state.gl);
   const camera = useThree((state) => state.camera);
   const scene = useThree((state) => state.scene);
-  const adjustCamera = useMwendoStore((state) => state.adjustCamera);
-  const storeApi = useMwendoStoreApi();
+  const adjustCamera = useCharacterCtrlrStore((state) => state.adjustCamera);
+  const storeApi = useCharacterCtrlrStoreApi();
   const offset = useMemo(
     () => new Vector3(...followOffset),
     [followOffset],

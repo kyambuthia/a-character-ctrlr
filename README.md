@@ -1,6 +1,6 @@
-# Mwendo
+# CharacterCtrlr
 
-`Mwendo` is a hybrid `library + demo` project for a React Three Fiber third-person controller stack. It ships a reusable primitive player, a follow camera with camera-occlusion handling, scoped controller state, a humanoid ragdoll dummy, and an in-world ragdoll debug lab.
+`CharacterCtrlr` is a hybrid `library + demo` project for a React Three Fiber third-person controller stack. It ships a reusable primitive player, a follow camera with camera-occlusion handling, scoped controller state, a humanoid ragdoll dummy, and an in-world ragdoll debug lab.
 
 ## Production active-ragdoll direction
 
@@ -44,7 +44,7 @@ What is not finished yet:
 ## Install
 
 ```bash
-npm install mwendo react react-dom three @react-three/fiber @react-three/rapier @react-three/drei
+npm install a-character-ctrlr react react-dom three @react-three/fiber @react-three/rapier @react-three/drei
 ```
 
 ## Quick start
@@ -52,18 +52,18 @@ npm install mwendo react react-dom three @react-three/fiber @react-three/rapier 
 ```tsx
 import { Canvas } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
-import { MwendoCameraRig, MwendoPlayer, MwendoProvider } from "mwendo";
+import { CharacterCtrlrCameraRig, CharacterCtrlrPlayer, CharacterCtrlrProvider } from "a-character-ctrlr";
 
 export function Scene() {
   return (
-    <MwendoProvider initialState={{ playerPosition: [0, 2.5, 6] }}>
+    <CharacterCtrlrProvider initialState={{ playerPosition: [0, 2.5, 6] }}>
       <Canvas shadows camera={{ fov: 42, near: 0.1, far: 250, position: [0, 3.5, 8] }}>
         <Physics gravity={[0, -9.81, 0]}>
-          <MwendoPlayer controls="keyboard" position={[0, 2.5, 6]} />
+          <CharacterCtrlrPlayer controls="keyboard" position={[0, 2.5, 6]} />
         </Physics>
-        <MwendoCameraRig />
+        <CharacterCtrlrCameraRig />
       </Canvas>
-    </MwendoProvider>
+    </CharacterCtrlrProvider>
   );
 }
 ```
@@ -77,14 +77,14 @@ import { useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 import {
-  MwendoCameraRig,
-  MwendoPlayer,
-  MwendoProvider,
-  useMwendoInputController,
-} from "mwendo";
+  CharacterCtrlrCameraRig,
+  CharacterCtrlrPlayer,
+  CharacterCtrlrProvider,
+  useCharacterCtrlrInputController,
+} from "a-character-ctrlr";
 
 function BotDriver() {
-  const controller = useMwendoInputController();
+  const controller = useCharacterCtrlrInputController();
 
   useEffect(() => {
     controller.replaceInput({ forward: true, run: true });
@@ -93,7 +93,7 @@ function BotDriver() {
 
   return (
     <>
-      <MwendoPlayer
+      <CharacterCtrlrPlayer
         controls="none"
         inputRef={controller.inputRef}
         onGroundedChange={(grounded) => {
@@ -102,53 +102,53 @@ function BotDriver() {
           }
         }}
       />
-      <MwendoCameraRig />
+      <CharacterCtrlrCameraRig />
     </>
   );
 }
 
 export function Scene() {
   return (
-    <MwendoProvider>
+    <CharacterCtrlrProvider>
       <Canvas>
         <Physics>
           <BotDriver />
         </Physics>
       </Canvas>
-    </MwendoProvider>
+    </CharacterCtrlrProvider>
   );
 }
 ```
 
 ## Exported API
 
-- `MwendoProvider`
-- `createMwendoStore`
-- `useMwendoStore`
-- `useMwendoStoreApi`
-- `useMwendoKeyboardInput`
-- `useMwendoInputController`
-- `MwendoActiveRagdollPlayer` experimental
-- `MwendoPlayer`
-- `MwendoCameraRig`
-- `MwendoRagdollDummy`
-- `DEFAULT_MWENDO_INPUT`
-- `mergeMwendoInput`
+- `CharacterCtrlrProvider`
+- `createCharacterCtrlrStore`
+- `useCharacterCtrlrStore`
+- `useCharacterCtrlrStoreApi`
+- `useCharacterCtrlrKeyboardInput`
+- `useCharacterCtrlrInputController`
+- `CharacterCtrlrActiveRagdollPlayer` experimental
+- `CharacterCtrlrPlayer`
+- `CharacterCtrlrCameraRig`
+- `CharacterCtrlrRagdollDummy`
+- `DEFAULT_CHARACTER_CTRLR_INPUT`
+- `mergeCharacterCtrlrInput`
 
 Useful exported types:
 
-- `MwendoControllerState`
-- `MwendoStoreApi`
-- `MwendoStoreInit`
-- `MwendoInputState`
-- `MwendoMovementMode`
-- `MwendoPlayerSnapshot`
-- `MwendoSupportState`
-- `MwendoVec3`
+- `CharacterCtrlrControllerState`
+- `CharacterCtrlrStoreApi`
+- `CharacterCtrlrStoreInit`
+- `CharacterCtrlrInputState`
+- `CharacterCtrlrMovementMode`
+- `CharacterCtrlrPlayerSnapshot`
+- `CharacterCtrlrSupportState`
+- `CharacterCtrlrVec3`
 
 ## Key component props
 
-`MwendoPlayer` supports:
+`CharacterCtrlrPlayer` supports:
 
 - `controls="keyboard" | "none"`
 - `input` and `inputRef` for additive external input
@@ -157,9 +157,9 @@ Useful exported types:
 - `debug` for the in-world player debug overlay
 - emitted snapshots currently report `supportState` as a simple `"double"` or `"none"` fallback for the capsule baseline
 
-`MwendoActiveRagdollPlayer` supports:
+`CharacterCtrlrActiveRagdollPlayer` supports:
 
-- the same input and lifecycle callback shape as `MwendoPlayer`
+- the same input and lifecycle callback shape as `CharacterCtrlrPlayer`
 - experimental tunables for `jumpImpulse`, `uprightTorque`, `turnTorque`, and `balanceDamping`
 - experimental camera-target tuning with `cameraFocusSmoothing`, `cameraFocusHeight`, and `cameraFocusLead`
 - `debug` to view the articulated rig through the ragdoll debug overlay
@@ -170,13 +170,13 @@ Production note:
 - active-ragdoll work is still marked experimental, but the implementation plan is now production-oriented and literature-backed
 - new locomotion, balance, and recovery work should land in the library runtime first and only then be exposed through the demo
 
-`MwendoCameraRig` supports:
+`CharacterCtrlrCameraRig` supports:
 
 - `followOffset`, `focusHeight`, and `smoothing`
 - `pointerLock`, `yawSensitivity`, and `pitchSensitivity`
 - `collisionEnabled`, `collisionPadding`, and `minCollisionDistance`
 
-`MwendoRagdollDummy` supports:
+`CharacterCtrlrRagdollDummy` supports:
 
 - `position`
 - `debug`

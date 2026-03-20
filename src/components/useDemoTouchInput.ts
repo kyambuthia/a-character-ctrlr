@@ -1,14 +1,14 @@
 import { useEffect, useRef } from "react";
-import { useMwendoStoreApi } from "../lib";
+import { useCharacterCtrlrStoreApi } from "../lib";
 import {
-  DEFAULT_MWENDO_INPUT,
-  type MwendoInputState,
+  DEFAULT_CHARACTER_CTRLR_INPUT,
+  type CharacterCtrlrInputState,
 } from "../lib";
 
 const MOVE_DEAD_ZONE = 18;
 const RUN_THRESHOLD = 70;
 
-function makeInputFromDelta(dx: number, dy: number): MwendoInputState {
+function makeInputFromDelta(dx: number, dy: number): CharacterCtrlrInputState {
   const magnitude = Math.hypot(dx, dy);
 
   return {
@@ -23,8 +23,8 @@ function makeInputFromDelta(dx: number, dy: number): MwendoInputState {
 }
 
 export function useDemoTouchInput() {
-  const storeApi = useMwendoStoreApi();
-  const inputRef = useRef<MwendoInputState | null>({ ...DEFAULT_MWENDO_INPUT });
+  const storeApi = useCharacterCtrlrStoreApi();
+  const inputRef = useRef<CharacterCtrlrInputState | null>({ ...DEFAULT_CHARACTER_CTRLR_INPUT });
 
   useEffect(() => {
     let moveTouchId: number | null = null;
@@ -33,7 +33,7 @@ export function useDemoTouchInput() {
     let lookPrevious = { x: 0, y: 0 };
 
     const resetMovement = () => {
-      inputRef.current = { ...DEFAULT_MWENDO_INPUT };
+      inputRef.current = { ...DEFAULT_CHARACTER_CTRLR_INPUT };
     };
 
     const onTouchStart = (event: TouchEvent) => {
@@ -43,7 +43,7 @@ export function useDemoTouchInput() {
         if (moveTouchId === null && touch.clientX < viewportMidpoint) {
           moveTouchId = touch.identifier;
           moveOrigin = { x: touch.clientX, y: touch.clientY };
-          inputRef.current = { ...DEFAULT_MWENDO_INPUT };
+          inputRef.current = { ...DEFAULT_CHARACTER_CTRLR_INPUT };
           continue;
         }
 

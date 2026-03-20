@@ -1,25 +1,25 @@
 import { useRef } from "react";
 import {
-  DEFAULT_MWENDO_INPUT,
-  type MwendoInputState,
+  DEFAULT_CHARACTER_CTRLR_INPUT,
+  type CharacterCtrlrInputState,
 } from "./types";
 
 type InputUpdater =
-  | Partial<MwendoInputState>
-  | ((current: MwendoInputState) => Partial<MwendoInputState> | MwendoInputState);
+  | Partial<CharacterCtrlrInputState>
+  | ((current: CharacterCtrlrInputState) => Partial<CharacterCtrlrInputState> | CharacterCtrlrInputState);
 
-export function useMwendoInputController(
-  initialState?: Partial<MwendoInputState>,
+export function useCharacterCtrlrInputController(
+  initialState?: Partial<CharacterCtrlrInputState>,
 ) {
-  const inputRef = useRef<MwendoInputState>({
-    ...DEFAULT_MWENDO_INPUT,
+  const inputRef = useRef<CharacterCtrlrInputState>({
+    ...DEFAULT_CHARACTER_CTRLR_INPUT,
     ...initialState,
   });
   const apiRef = useRef<{
     inputRef: typeof inputRef;
     setInput: (updater: InputUpdater) => void;
-    replaceInput: (nextState?: Partial<MwendoInputState>) => void;
-    pressInput: (key: keyof MwendoInputState, pressed?: boolean) => void;
+    replaceInput: (nextState?: Partial<CharacterCtrlrInputState>) => void;
+    pressInput: (key: keyof CharacterCtrlrInputState, pressed?: boolean) => void;
     resetInput: () => void;
   } | null>(null);
 
@@ -35,20 +35,20 @@ export function useMwendoInputController(
           ...next,
         };
       },
-      replaceInput: (nextState?: Partial<MwendoInputState>) => {
+      replaceInput: (nextState?: Partial<CharacterCtrlrInputState>) => {
         inputRef.current = {
-          ...DEFAULT_MWENDO_INPUT,
+          ...DEFAULT_CHARACTER_CTRLR_INPUT,
           ...nextState,
         };
       },
-      pressInput: (key: keyof MwendoInputState, pressed = true) => {
+      pressInput: (key: keyof CharacterCtrlrInputState, pressed = true) => {
         inputRef.current = {
           ...inputRef.current,
           [key]: pressed,
         };
       },
       resetInput: () => {
-        inputRef.current = { ...DEFAULT_MWENDO_INPUT };
+        inputRef.current = { ...DEFAULT_CHARACTER_CTRLR_INPUT };
       },
     };
   }

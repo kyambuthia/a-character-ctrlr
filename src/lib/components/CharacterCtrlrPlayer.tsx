@@ -12,17 +12,17 @@ import {
   useRef,
 } from "react";
 import { Group, MathUtils, Vector3 } from "three";
-import { MwendoPlayerDebug } from "./MwendoPlayerDebug";
+import { CharacterCtrlrPlayerDebug } from "./CharacterCtrlrPlayerDebug";
 import { PrimitiveHero } from "./PrimitiveHero";
-import { useMwendoStore, useMwendoStoreApi } from "../MwendoProvider";
-import { useMwendoKeyboardInput } from "../useMwendoKeyboardInput";
+import { useCharacterCtrlrStore, useCharacterCtrlrStoreApi } from "../CharacterCtrlrProvider";
+import { useCharacterCtrlrKeyboardInput } from "../useCharacterCtrlrKeyboardInput";
 import {
-  DEFAULT_MWENDO_INPUT,
-  mergeMwendoInput,
-  type MwendoInputState,
-  type MwendoMovementMode,
-  type MwendoPlayerSnapshot,
-  type MwendoVec3,
+  DEFAULT_CHARACTER_CTRLR_INPUT,
+  mergeCharacterCtrlrInput,
+  type CharacterCtrlrInputState,
+  type CharacterCtrlrMovementMode,
+  type CharacterCtrlrPlayerSnapshot,
+  type CharacterCtrlrVec3,
 } from "../types";
 
 const forward = new Vector3();
@@ -30,11 +30,11 @@ const right = new Vector3();
 const movement = new Vector3();
 const MAX_SPEED = 7;
 
-export type MwendoPlayerProps = {
-  position?: MwendoVec3;
+export type CharacterCtrlrPlayerProps = {
+  position?: CharacterCtrlrVec3;
   controls?: "keyboard" | "none";
-  input?: Partial<MwendoInputState>;
-  inputRef?: RefObject<MwendoInputState | null>;
+  input?: Partial<CharacterCtrlrInputState>;
+  inputRef?: RefObject<CharacterCtrlrInputState | null>;
   linearDamping?: number;
   capsuleHalfHeight?: number;
   capsuleRadius?: number;
@@ -49,14 +49,14 @@ export type MwendoPlayerProps = {
   paused?: boolean;
   timeScale?: number;
   manualStepCount?: number;
-  onSnapshotChange?: (snapshot: MwendoPlayerSnapshot) => void;
+  onSnapshotChange?: (snapshot: CharacterCtrlrPlayerSnapshot) => void;
   onMovementModeChange?: (
-    movementMode: MwendoMovementMode,
-    previousMovementMode: MwendoMovementMode,
+    movementMode: CharacterCtrlrMovementMode,
+    previousMovementMode: CharacterCtrlrMovementMode,
   ) => void;
   onGroundedChange?: (grounded: boolean) => void;
-  onJump?: (snapshot: MwendoPlayerSnapshot) => void;
-  onLand?: (snapshot: MwendoPlayerSnapshot) => void;
+  onJump?: (snapshot: CharacterCtrlrPlayerSnapshot) => void;
+  onLand?: (snapshot: CharacterCtrlrPlayerSnapshot) => void;
 };
 
 function dampAxis(
@@ -90,7 +90,7 @@ function dampAngle(current: number, target: number, lambda: number, delta: numbe
   return current + difference * alpha;
 }
 
-export function MwendoPlayer({
+export function CharacterCtrlrPlayer({
   position = [0, 2.5, 6],
   controls = "keyboard",
   input,
@@ -114,10 +114,10 @@ export function MwendoPlayer({
   onGroundedChange,
   onJump,
   onLand,
-}: MwendoPlayerProps) {
-  const storeApi = useMwendoStoreApi();
-  const setPlayerSnapshot = useMwendoStore((state) => state.setPlayerSnapshot);
-  const movementMode = useMwendoStore((state) => state.movementMode);
+}: CharacterCtrlrPlayerProps) {
+  const storeApi = useCharacterCtrlrStoreApi();
+  const setPlayerSnapshot = useCharacterCtrlrStore((state) => state.setPlayerSnapshot);
+  const movementMode = useCharacterCtrlrStore((state) => state.movementMode);
 
   const bodyRef = useRef<RapierRigidBody>(null);
   const visualRef = useRef<Group>(null);
@@ -135,7 +135,7 @@ export function MwendoPlayer({
   const gaitPhaseRef = useRef(0);
   const debugStateRef = useRef<{
     facing: number;
-    movementMode: MwendoMovementMode;
+    movementMode: CharacterCtrlrMovementMode;
     grounded: boolean;
     supportState: "none" | "double";
   } | null>({
@@ -146,11 +146,11 @@ export function MwendoPlayer({
   });
   const supportColliderHandlesRef = useRef<Set<number>>(new Set());
   const groundedRef = useRef(false);
-  const movementModeRef = useRef<MwendoMovementMode>("idle");
+  const movementModeRef = useRef<CharacterCtrlrMovementMode>("idle");
   const jumpHeldRef = useRef(false);
-  const lastSnapshotRef = useRef<MwendoPlayerSnapshot | null>(null);
-  const idleInputRef = useRef<MwendoInputState | null>({ ...DEFAULT_MWENDO_INPUT });
-  const keyboardInputRef = useMwendoKeyboardInput(controls === "keyboard");
+  const lastSnapshotRef = useRef<CharacterCtrlrPlayerSnapshot | null>(null);
+  const idleInputRef = useRef<CharacterCtrlrInputState | null>({ ...DEFAULT_CHARACTER_CTRLR_INPUT });
+  const keyboardInputRef = useCharacterCtrlrKeyboardInput(controls === "keyboard");
   const initialPositionRef = useRef(position);
 
   const updateGrounded = (nextGrounded: boolean) => {
@@ -183,7 +183,7 @@ export function MwendoPlayer({
   };
 
   useEffect(() => {
-    const initialSnapshot: MwendoPlayerSnapshot = {
+    const initialSnapshot: CharacterCtrlrPlayerSnapshot = {
       position: initialPositionRef.current,
       facing: storeApi.getState().playerFacing,
       movementMode: "idle",
@@ -208,9 +208,9 @@ export function MwendoPlayer({
 
     const internalInput =
       controls === "keyboard"
-        ? keyboardInputRef.current ?? DEFAULT_MWENDO_INPUT
-        : idleInputRef.current ?? DEFAULT_MWENDO_INPUT;
-    const keys = mergeMwendoInput(input, inputRef?.current, internalInput);
+        ? keyboardInputRef.current ?? DEFAULT_CHARACTER_CTRLR_INPUT
+        : idleInputRef.current ?? DEFAULT_CHARACTER_CTRLR_INPUT;
+    const keys = mergeCharacterCtrlrInput(input, inputRef?.current, internalInput);
     const { cameraYaw, playerFacing } = storeApi.getState();
 
     forward.set(-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw));
@@ -227,7 +227,7 @@ export function MwendoPlayer({
       movement.normalize();
     }
 
-    const locomotionMode: MwendoMovementMode = keys.crouch
+    const locomotionMode: CharacterCtrlrMovementMode = keys.crouch
       ? "crouch"
       : hasMovementInput && keys.run
         ? "run"
@@ -287,7 +287,7 @@ export function MwendoPlayer({
 
     const bodyPosition = body.translation();
     const groundedAfterMove = groundedRef.current;
-    const nextMovementMode: MwendoMovementMode = groundedAfterMove
+    const nextMovementMode: CharacterCtrlrMovementMode = groundedAfterMove
       ? locomotionMode
       : nextVelocityY > 0.35
         ? "jump"
@@ -419,7 +419,7 @@ export function MwendoPlayer({
       onMovementModeChange?.(nextMovementMode, previousMovementMode);
     }
 
-    const snapshot: MwendoPlayerSnapshot = {
+    const snapshot: CharacterCtrlrPlayerSnapshot = {
       position: [bodyPosition.x, bodyPosition.y, bodyPosition.z],
       velocity: [nextVelocityX, nextVelocityY, nextVelocityZ],
       facing,
@@ -449,7 +449,7 @@ export function MwendoPlayer({
   return (
     <>
       {debug ? (
-        <MwendoPlayerDebug
+        <CharacterCtrlrPlayerDebug
           bodyRef={bodyRef}
           capsuleHalfHeight={capsuleHalfHeight}
           capsuleRadius={capsuleRadius}

@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 import type { Group } from "three";
-import type { MwendoMovementMode } from "../types";
+import type { CharacterCtrlrMovementMode } from "../types";
 
 type PrimitiveHeroRig = {
   rootRef: RefObject<Group | null>;
@@ -58,7 +58,7 @@ function FacePlate(props: {
 }
 
 export function PrimitiveHero(props: {
-  movementMode: MwendoMovementMode;
+  movementMode: CharacterCtrlrMovementMode;
   rig: PrimitiveHeroRig;
 }) {
   void props.movementMode;
@@ -68,7 +68,7 @@ export function PrimitiveHero(props: {
       ref={props.rig.rootRef}
       position={[0, -0.12, 0]}
       scale={0.43}
-      userData={{ mwendoIgnoreCameraOcclusion: true }}
+      userData={{ characterCtrlrIgnoreCameraOcclusion: true }}
     >
       <group ref={props.rig.pelvisRef} position={[0, 0.9, 0]}>
         <group ref={props.rig.spineRef} position={[0, 0.02, 0]}>

@@ -88,8 +88,8 @@ Theory basis:
 
 Primary implementation targets:
 
-- `src/lib/components/MwendoHumanoidData.ts`
-- `src/lib/components/MwendoHumanoidRagdoll.tsx`
+- `src/lib/components/CharacterCtrlrHumanoidData.ts`
+- `src/lib/components/CharacterCtrlrHumanoidRagdoll.tsx`
 
 Tasks:
 
@@ -121,9 +121,9 @@ Theory basis:
 
 Primary implementation targets:
 
-- `src/lib/components/MwendoRagdollDebug.tsx`
-- `src/lib/MwendoProvider.tsx`
-- `src/lib/components/MwendoActiveRagdollPlayer.tsx`
+- `src/lib/components/CharacterCtrlrRagdollDebug.tsx`
+- `src/lib/CharacterCtrlrProvider.tsx`
+- `src/lib/components/CharacterCtrlrActiveRagdollPlayer.tsx`
 
 Tasks:
 
@@ -154,7 +154,7 @@ Theory basis:
 
 Primary implementation target:
 
-- `src/lib/components/MwendoActiveRagdollPlayer.tsx`
+- `src/lib/components/CharacterCtrlrActiveRagdollPlayer.tsx`
 
 Tasks:
 
@@ -191,7 +191,7 @@ Theory basis:
 
 Primary implementation target:
 
-- `src/lib/components/MwendoActiveRagdollPlayer.tsx`
+- `src/lib/components/CharacterCtrlrActiveRagdollPlayer.tsx`
 
 Tasks:
 
@@ -236,7 +236,7 @@ Theory basis:
 
 Primary implementation targets:
 
-- `src/lib/components/MwendoActiveRagdollPlayer.tsx`
+- `src/lib/components/CharacterCtrlrActiveRagdollPlayer.tsx`
 - `src/lib/types.ts`
 
 Tasks:
@@ -274,7 +274,7 @@ Theory basis:
 
 Primary implementation target:
 
-- `src/lib/components/MwendoActiveRagdollPlayer.tsx`
+- `src/lib/components/CharacterCtrlrActiveRagdollPlayer.tsx`
 
 Tasks:
 
@@ -306,7 +306,7 @@ Theory basis:
 
 Primary implementation targets:
 
-- `src/lib/components/MwendoActiveRagdollPlayer.tsx`
+- `src/lib/components/CharacterCtrlrActiveRagdollPlayer.tsx`
 - future recovery helpers in `src/lib/components`
 
 Tasks:

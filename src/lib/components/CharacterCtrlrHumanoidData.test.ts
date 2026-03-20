@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
-  MWENDO_HUMANOID_BODY_DEFINITIONS,
-  MWENDO_HUMANOID_JOINT_DEFINITIONS,
-} from "./MwendoHumanoidData";
+  CHARACTER_CTRLR_HUMANOID_BODY_DEFINITIONS,
+  CHARACTER_CTRLR_HUMANOID_JOINT_DEFINITIONS,
+} from "./CharacterCtrlrHumanoidData";
 
-describe("MWENDO_HUMANOID_JOINT_DEFINITIONS", () => {
+describe("CHARACTER_CTRLR_HUMANOID_JOINT_DEFINITIONS", () => {
   it("keeps every joint anchor aligned in the bind pose", () => {
     const bodyPositions = Object.fromEntries(
-      MWENDO_HUMANOID_BODY_DEFINITIONS.map((body) => [body.key, body.position]),
+      CHARACTER_CTRLR_HUMANOID_BODY_DEFINITIONS.map((body) => [body.key, body.position]),
     );
 
-    for (const joint of MWENDO_HUMANOID_JOINT_DEFINITIONS) {
+    for (const joint of CHARACTER_CTRLR_HUMANOID_JOINT_DEFINITIONS) {
       const bodyAPosition = bodyPositions[joint.bodyA];
       const bodyBPosition = bodyPositions[joint.bodyB];
       const worldAnchorA = joint.anchorA.map(
@@ -33,8 +33,8 @@ describe("MWENDO_HUMANOID_JOINT_DEFINITIONS", () => {
   });
 
   it("keeps the head collider clear of the chest in the bind pose", () => {
-    const chest = MWENDO_HUMANOID_BODY_DEFINITIONS.find((body) => body.key === "chest");
-    const head = MWENDO_HUMANOID_BODY_DEFINITIONS.find((body) => body.key === "head");
+    const chest = CHARACTER_CTRLR_HUMANOID_BODY_DEFINITIONS.find((body) => body.key === "chest");
+    const head = CHARACTER_CTRLR_HUMANOID_BODY_DEFINITIONS.find((body) => body.key === "head");
 
     expect(chest).toBeDefined();
     expect(head).toBeDefined();

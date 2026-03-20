@@ -10,17 +10,17 @@ import {
   useDemoPhysicsDebugControls,
 } from "./components/useDemoPhysicsDebugControls";
 import {
-  MwendoActiveRagdollPlayer,
-  MwendoCameraRig,
-  MwendoPlayer,
-  MwendoProvider,
-  MwendoRagdollDummy,
+  CharacterCtrlrActiveRagdollPlayer,
+  CharacterCtrlrCameraRig,
+  CharacterCtrlrPlayer,
+  CharacterCtrlrProvider,
+  CharacterCtrlrRagdollDummy,
 } from "./lib";
 
 const DEMO_PLAYER_MODE =
-  new URLSearchParams(window.location.search).get("player") === "capsule"
-    ? "capsule"
-    : "ragdoll";
+  new URLSearchParams(window.location.search).get("player") === "ragdoll"
+    ? "ragdoll"
+    : "capsule";
 
 function DemoPhysicsStepper({
   paused,
@@ -88,13 +88,14 @@ function DemoScene() {
             />
             <FlatArena />
             {DEMO_PLAYER_MODE === "ragdoll" ? (
-              <MwendoActiveRagdollPlayer
+              <CharacterCtrlrActiveRagdollPlayer
                 controls="keyboard"
+                debug
                 inputRef={touchInputRef}
                 position={[0, 2.5, 6]}
               />
             ) : (
-              <MwendoPlayer
+              <CharacterCtrlrPlayer
                 controls="keyboard"
                 debug
                 inputRef={touchInputRef}
@@ -104,14 +105,15 @@ function DemoScene() {
                 timeScale={physicsDebug.timeScale}
               />
             )}
-            <MwendoRagdollDummy
+            <CharacterCtrlrRagdollDummy
+              debug
               manualStepCount={physicsDebug.manualStepCount}
               paused={physicsDebug.paused}
               position={[-4, 5.5, -6]}
               timeScale={physicsDebug.timeScale}
             />
           </Physics>
-          <MwendoCameraRig />
+          <CharacterCtrlrCameraRig />
         </Suspense>
       </Canvas>
     </>
@@ -120,8 +122,8 @@ function DemoScene() {
 
 export default function App() {
   return (
-    <MwendoProvider initialState={{ playerPosition: [0, 2.5, 6] }}>
+    <CharacterCtrlrProvider initialState={{ playerPosition: [0, 2.5, 6] }}>
       <DemoScene />
-    </MwendoProvider>
+    </CharacterCtrlrProvider>
   );
 }

@@ -13,58 +13,58 @@ import {
   type MutableRefObject,
   type RefObject,
 } from "react";
-import type { MwendoVec3 } from "../types";
+import type { CharacterCtrlrVec3 } from "../types";
 import {
-  MwendoRagdollDebug,
-  type MwendoRagdollBodyDescriptor,
-  type MwendoRagdollJointDescriptor,
-} from "./MwendoRagdollDebug";
+  CharacterCtrlrRagdollDebug,
+  type CharacterCtrlrRagdollBodyDescriptor,
+  type CharacterCtrlrRagdollJointDescriptor,
+} from "./CharacterCtrlrRagdollDebug";
 import {
-  createMwendoHumanoidBodyRefs,
-  MWENDO_HUMANOID_BODY_DEFINITIONS,
-  MWENDO_HUMANOID_FIXED_JOINT_DEFINITIONS,
-  MWENDO_HUMANOID_JOINT_DEFINITIONS,
-  MWENDO_HUMANOID_REVOLUTE_JOINT_DEFINITIONS,
-  MWENDO_HUMANOID_SPHERICAL_JOINT_DEFINITIONS,
-  type MwendoHumanoidBodyDefinition,
-  type MwendoHumanoidBodyKey,
-  type MwendoHumanoidBodyRefs,
-  type MwendoHumanoidFixedJointDefinition,
-  type MwendoHumanoidRevoluteJointKey,
-  type MwendoHumanoidRevoluteJointDefinition,
-  type MwendoHumanoidRevoluteJointRefs,
-  type MwendoHumanoidSphericalJointDefinition,
-} from "./MwendoHumanoidData";
+  createCharacterCtrlrHumanoidBodyRefs,
+  CHARACTER_CTRLR_HUMANOID_BODY_DEFINITIONS,
+  CHARACTER_CTRLR_HUMANOID_FIXED_JOINT_DEFINITIONS,
+  CHARACTER_CTRLR_HUMANOID_JOINT_DEFINITIONS,
+  CHARACTER_CTRLR_HUMANOID_REVOLUTE_JOINT_DEFINITIONS,
+  CHARACTER_CTRLR_HUMANOID_SPHERICAL_JOINT_DEFINITIONS,
+  type CharacterCtrlrHumanoidBodyDefinition,
+  type CharacterCtrlrHumanoidBodyKey,
+  type CharacterCtrlrHumanoidBodyRefs,
+  type CharacterCtrlrHumanoidFixedJointDefinition,
+  type CharacterCtrlrHumanoidRevoluteJointKey,
+  type CharacterCtrlrHumanoidRevoluteJointDefinition,
+  type CharacterCtrlrHumanoidRevoluteJointRefs,
+  type CharacterCtrlrHumanoidSphericalJointDefinition,
+} from "./CharacterCtrlrHumanoidData";
 
 const RAGDOLL_COLLISION_GROUPS = interactionGroups([1], [0]);
 
-type MwendoHumanoidBodyOverrides = Omit<
+type CharacterCtrlrHumanoidBodyOverrides = Omit<
   ComponentProps<typeof RigidBody>,
   "children" | "ref" | "position" | "colliders" | "mass"
 >;
 
-export type MwendoHumanoidRagdollProps = {
-  position?: MwendoVec3;
+export type CharacterCtrlrHumanoidRagdollProps = {
+  position?: CharacterCtrlrVec3;
   debug?: boolean;
   paused?: boolean;
   timeScale?: number;
   manualStepCount?: number;
   ignoreCameraOcclusion?: boolean;
-  bodyRefs?: MwendoHumanoidBodyRefs;
-  revoluteJointRefs?: MwendoHumanoidRevoluteJointRefs;
-  sharedBodyProps?: MwendoHumanoidBodyOverrides;
-  bodyProps?: Partial<Record<MwendoHumanoidBodyKey, MwendoHumanoidBodyOverrides>>;
+  bodyRefs?: CharacterCtrlrHumanoidBodyRefs;
+  revoluteJointRefs?: CharacterCtrlrHumanoidRevoluteJointRefs;
+  sharedBodyProps?: CharacterCtrlrHumanoidBodyOverrides;
+  bodyProps?: Partial<Record<CharacterCtrlrHumanoidBodyKey, CharacterCtrlrHumanoidBodyOverrides>>;
 };
 
 function HumanoidBodyVisual({
   definition,
   ignoreCameraOcclusion,
 }: {
-  definition: MwendoHumanoidBodyDefinition;
+  definition: CharacterCtrlrHumanoidBodyDefinition;
   ignoreCameraOcclusion: boolean;
 }) {
   const userData = ignoreCameraOcclusion
-    ? { mwendoIgnoreCameraOcclusion: true }
+    ? { characterCtrlrIgnoreCameraOcclusion: true }
     : undefined;
 
   return (
@@ -94,11 +94,11 @@ function HumanoidRigidBody({
   sharedBodyProps,
   bodyProps,
 }: {
-  bodyRef: MwendoHumanoidBodyRefs[MwendoHumanoidBodyKey];
-  definition: MwendoHumanoidBodyDefinition;
+  bodyRef: CharacterCtrlrHumanoidBodyRefs[CharacterCtrlrHumanoidBodyKey];
+  definition: CharacterCtrlrHumanoidBodyDefinition;
   ignoreCameraOcclusion: boolean;
-  sharedBodyProps?: MwendoHumanoidBodyOverrides;
-  bodyProps?: MwendoHumanoidBodyOverrides;
+  sharedBodyProps?: CharacterCtrlrHumanoidBodyOverrides;
+  bodyProps?: CharacterCtrlrHumanoidBodyOverrides;
 }) {
   return (
     <RigidBody
@@ -130,8 +130,8 @@ function HumanoidSphericalJoint({
   bodyRefs,
   definition,
 }: {
-  bodyRefs: MwendoHumanoidBodyRefs;
-  definition: MwendoHumanoidSphericalJointDefinition;
+  bodyRefs: CharacterCtrlrHumanoidBodyRefs;
+  definition: CharacterCtrlrHumanoidSphericalJointDefinition;
 }) {
   useSphericalJoint(
     bodyRefs[definition.bodyA] as RefObject<RapierRigidBody>,
@@ -149,8 +149,8 @@ function HumanoidFixedJoint({
   bodyRefs,
   definition,
 }: {
-  bodyRefs: MwendoHumanoidBodyRefs;
-  definition: MwendoHumanoidFixedJointDefinition;
+  bodyRefs: CharacterCtrlrHumanoidBodyRefs;
+  definition: CharacterCtrlrHumanoidFixedJointDefinition;
 }) {
   useFixedJoint(
     bodyRefs[definition.bodyA] as RefObject<RapierRigidBody>,
@@ -171,8 +171,8 @@ function HumanoidRevoluteJoint({
   definition,
   jointRef,
 }: {
-  bodyRefs: MwendoHumanoidBodyRefs;
-  definition: MwendoHumanoidRevoluteJointDefinition;
+  bodyRefs: CharacterCtrlrHumanoidBodyRefs;
+  definition: CharacterCtrlrHumanoidRevoluteJointDefinition;
   jointRef?: MutableRefObject<ReturnType<typeof useRevoluteJoint>["current"] | null>;
 }) {
   const internalJointRef = useRevoluteJoint(
@@ -201,7 +201,7 @@ function HumanoidRevoluteJoint({
   return null;
 }
 
-export function MwendoHumanoidRagdoll({
+export function CharacterCtrlrHumanoidRagdoll({
   position = [0, 4.5, 0],
   debug = false,
   paused = false,
@@ -212,12 +212,12 @@ export function MwendoHumanoidRagdoll({
   revoluteJointRefs,
   sharedBodyProps,
   bodyProps,
-}: MwendoHumanoidRagdollProps) {
-  const internalBodyRefs = useMemo(() => createMwendoHumanoidBodyRefs(), []);
+}: CharacterCtrlrHumanoidRagdollProps) {
+  const internalBodyRefs = useMemo(() => createCharacterCtrlrHumanoidBodyRefs(), []);
   const bodyRefs = externalBodyRefs ?? internalBodyRefs;
-  const bodyDescriptors = useMemo<MwendoRagdollBodyDescriptor[]>(
+  const bodyDescriptors = useMemo<CharacterCtrlrRagdollBodyDescriptor[]>(
     () =>
-      MWENDO_HUMANOID_BODY_DEFINITIONS.map((definition) => ({
+      CHARACTER_CTRLR_HUMANOID_BODY_DEFINITIONS.map((definition) => ({
         key: definition.key,
         label: definition.label,
         ref: bodyRefs[definition.key],
@@ -227,9 +227,9 @@ export function MwendoHumanoidRagdoll({
       })),
     [bodyRefs],
   );
-  const jointDescriptors = useMemo<MwendoRagdollJointDescriptor[]>(
+  const jointDescriptors = useMemo<CharacterCtrlrRagdollJointDescriptor[]>(
     () =>
-      MWENDO_HUMANOID_JOINT_DEFINITIONS.map((definition) => ({
+      CHARACTER_CTRLR_HUMANOID_JOINT_DEFINITIONS.map((definition) => ({
         key: definition.key,
         kind: definition.kind,
         bodyA: bodyRefs[definition.bodyA],
@@ -245,7 +245,7 @@ export function MwendoHumanoidRagdoll({
   return (
     <group position={position}>
       {debug ? (
-        <MwendoRagdollDebug
+        <CharacterCtrlrRagdollDebug
           bodies={bodyDescriptors}
           joints={jointDescriptors}
           manualStepCount={manualStepCount}
@@ -255,7 +255,7 @@ export function MwendoHumanoidRagdoll({
         />
       ) : null}
 
-      {MWENDO_HUMANOID_FIXED_JOINT_DEFINITIONS.map((definition) => (
+      {CHARACTER_CTRLR_HUMANOID_FIXED_JOINT_DEFINITIONS.map((definition) => (
         <HumanoidFixedJoint
           key={definition.key}
           bodyRefs={bodyRefs}
@@ -263,7 +263,7 @@ export function MwendoHumanoidRagdoll({
         />
       ))}
 
-      {MWENDO_HUMANOID_SPHERICAL_JOINT_DEFINITIONS.map((definition) => (
+      {CHARACTER_CTRLR_HUMANOID_SPHERICAL_JOINT_DEFINITIONS.map((definition) => (
         <HumanoidSphericalJoint
           key={definition.key}
           bodyRefs={bodyRefs}
@@ -271,7 +271,7 @@ export function MwendoHumanoidRagdoll({
         />
       ))}
 
-      {MWENDO_HUMANOID_REVOLUTE_JOINT_DEFINITIONS.map((definition) => (
+      {CHARACTER_CTRLR_HUMANOID_REVOLUTE_JOINT_DEFINITIONS.map((definition) => (
         <HumanoidRevoluteJoint
           key={definition.key}
           bodyRefs={bodyRefs}
@@ -280,7 +280,7 @@ export function MwendoHumanoidRagdoll({
         />
       ))}
 
-      {MWENDO_HUMANOID_BODY_DEFINITIONS.map((definition) => (
+      {CHARACTER_CTRLR_HUMANOID_BODY_DEFINITIONS.map((definition) => (
         <HumanoidRigidBody
           key={definition.key}
           bodyRef={bodyRefs[definition.key]}
