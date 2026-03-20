@@ -13,7 +13,10 @@ import {
   type RefObject,
 } from "react";
 import { Color, DoubleSide, Quaternion, Vector3 } from "three";
-import type { CharacterCtrlrVec3 } from "../types";
+import type {
+  CharacterCtrlrLocomotionDebugState,
+  CharacterCtrlrVec3,
+} from "../types";
 
 type DebugShape =
   | {
@@ -48,6 +51,7 @@ export type CharacterCtrlrRagdollJointDescriptor = {
 export type CharacterCtrlrRagdollDebugProps = {
   bodies: CharacterCtrlrRagdollBodyDescriptor[];
   joints: CharacterCtrlrRagdollJointDescriptor[];
+  locomotionDebugRef?: RefObject<CharacterCtrlrLocomotionDebugState | null>;
   origin?: CharacterCtrlrVec3;
   paused?: boolean;
   timeScale?: number;
@@ -509,11 +513,13 @@ function ContactNormal({ contact }: { contact: ContactSnapshot }) {
 
 function DebugBoard({
   liveStepCount,
+  locomotionDebugState,
   manualStepCount,
   paused,
   timeScale,
 }: {
   liveStepCount: number;
+  locomotionDebugState: CharacterCtrlrLocomotionDebugState | null;
   manualStepCount: number;
   paused: boolean;
   timeScale: number;
@@ -559,12 +565,56 @@ function DebugBoard({
         >
           1 normal  2 half  3 quarter  P pause  . single-step
         </Text>
+        {locomotionDebugState ? (
+          <>
+            <Text
+              anchorX="center"
+              anchorY="middle"
+              color="#9fe0f7"
+              fontSize={0.1}
+              maxWidth={4.1}
+              position={[0, -0.48, 0]}
+            >
+              {`${locomotionDebugState.gaitPhase}  ${locomotionDebugState.balanceState}  support ${locomotionDebugState.supportState}`}
+            </Text>
+            <Text
+              anchorX="center"
+              anchorY="middle"
+              color="#7ea4b3"
+              fontSize={0.09}
+              maxWidth={4.2}
+              position={[0, -0.72, 0]}
+            >
+              {`phase ${locomotionDebugState.gaitPhaseValue.toFixed(2)}  t ${locomotionDebugState.gaitPhaseElapsed.toFixed(2)}/${locomotionDebugState.gaitPhaseDuration.toFixed(2)}  speed ${locomotionDebugState.horizontalSpeed.toFixed(2)}`}
+            </Text>
+            <Text
+              anchorX="center"
+              anchorY="middle"
+              color="#7ea4b3"
+              fontSize={0.09}
+              maxWidth={4.2}
+              position={[0, -0.94, 0]}
+            >
+              {`transition ${locomotionDebugState.gaitTransitionReason}  count ${locomotionDebugState.gaitTransitionCount}  contacts L${locomotionDebugState.leftSupportContacts}/R${locomotionDebugState.rightSupportContacts}`}
+            </Text>
+            <Text
+              anchorX="center"
+              anchorY="middle"
+              color="#7ea4b3"
+              fontSize={0.09}
+              maxWidth={4.2}
+              position={[0, -1.16, 0]}
+            >
+              {`support err lat ${locomotionDebugState.supportLateralError.toFixed(2)}  fwd ${locomotionDebugState.supportForwardError.toFixed(2)}  h ${locomotionDebugState.supportHeightError.toFixed(2)}`}
+            </Text>
+          </>
+        ) : null}
         <Text
           anchorX="center"
           anchorY="middle"
           color="#7ea4b3"
           fontSize={0.1}
-          position={[0, -0.48, 0]}
+          position={[0, locomotionDebugState ? -1.42 : -0.48, 0]}
         >
           frames {liveStepCount}
         </Text>
@@ -785,6 +835,7 @@ function buildSnapshot(
 export function CharacterCtrlrRagdollDebug({
   bodies,
   joints,
+  locomotionDebugRef,
   origin = [0, 0, 0],
   paused = false,
   timeScale = 1,
@@ -842,6 +893,7 @@ export function CharacterCtrlrRagdollDebug({
     <group userData={{ characterCtrlrIgnoreCameraOcclusion: true }}>
       <DebugBoard
         liveStepCount={snapshot.liveStepCount}
+        locomotionDebugState={locomotionDebugRef?.current ?? null}
         manualStepCount={manualStepCount}
         paused={paused}
         timeScale={timeScale}
