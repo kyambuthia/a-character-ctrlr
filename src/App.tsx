@@ -18,9 +18,9 @@ import {
 } from "./lib";
 
 const DEMO_PLAYER_MODE =
-  new URLSearchParams(window.location.search).get("player") === "ragdoll"
-    ? "ragdoll"
-    : "capsule";
+  new URLSearchParams(window.location.search).get("player") === "capsule"
+    ? "capsule"
+    : "ragdoll";
 
 function DemoPhysicsStepper({
   paused,

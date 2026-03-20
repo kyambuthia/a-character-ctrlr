@@ -627,6 +627,26 @@ function DebugBoard({
             >
               {`com ${locomotionDebugState.centerOfMass[0].toFixed(2)} ${locomotionDebugState.centerOfMass[1].toFixed(2)} ${locomotionDebugState.centerOfMass[2].toFixed(2)}  cp ${locomotionDebugState.capturePoint[0].toFixed(2)} ${locomotionDebugState.capturePoint[2].toFixed(2)}`}
             </Text>
+            <Text
+              anchorX="center"
+              anchorY="middle"
+              color="#7ea4b3"
+              fontSize={0.085}
+              maxWidth={4.4}
+              position={[0, -1.82, 0]}
+            >
+              {`step len ${locomotionDebugState.stepLengthTarget.toFixed(2)}  width ${locomotionDebugState.stepWidthTarget.toFixed(2)}  height ${locomotionDebugState.stepHeightTarget.toFixed(2)}`}
+            </Text>
+            <Text
+              anchorX="center"
+              anchorY="middle"
+              color="#7ea4b3"
+              fontSize={0.08}
+              maxWidth={4.4}
+              position={[0, -2.04, 0]}
+            >
+              {`footfall ${locomotionDebugState.plannedFootfall[0].toFixed(2)} ${locomotionDebugState.plannedFootfall[1].toFixed(2)} ${locomotionDebugState.plannedFootfall[2].toFixed(2)}`}
+            </Text>
           </>
         ) : null}
         <Text
@@ -634,7 +654,7 @@ function DebugBoard({
           anchorY="middle"
           color="#7ea4b3"
           fontSize={0.1}
-          position={[0, locomotionDebugState ? -1.86 : -0.48, 0]}
+          position={[0, locomotionDebugState ? -2.3 : -0.48, 0]}
         >
           frames {liveStepCount}
         </Text>

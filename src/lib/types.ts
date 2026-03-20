@@ -84,6 +84,10 @@ export type CharacterCtrlrLocomotionDebugState = {
   captureTime: number;
   captureLateralError: number;
   captureForwardError: number;
+  plannedFootfall: CharacterCtrlrVec3;
+  stepLengthTarget: number;
+  stepWidthTarget: number;
+  stepHeightTarget: number;
 };
 
 export const DEFAULT_CHARACTER_CTRLR_INPUT: CharacterCtrlrInputState = {
