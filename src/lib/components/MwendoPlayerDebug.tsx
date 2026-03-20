@@ -1,9 +1,26 @@
 import { Billboard, Line, Text } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import type { RapierRigidBody } from "@react-three/rapier";
-import { startTransition, useRef, useState, type RefObject } from "react";
-import { DoubleSide, Vector3, type Group } from "three";
-import type { MwendoMovementMode, MwendoVec3 } from "../types";
+import {
+  useAfterPhysicsStep,
+  useRapier,
+  type RapierRigidBody,
+} from "@react-three/rapier";
+import {
+  startTransition,
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type RefObject,
+} from "react";
+import {
+  Color,
+  DoubleSide,
+  Vector3,
+  type Group,
+  type Mesh,
+} from "three";
+import type { MwendoMovementMode, MwendoSupportState, MwendoVec3 } from "../types";
 
 type JointRefMap = {
   pelvisRef: RefObject<Group | null>;
@@ -23,6 +40,7 @@ type PlayerDebugStateRef = RefObject<{
   facing: number;
   movementMode: MwendoMovementMode;
   grounded: boolean;
+  supportState: MwendoSupportState;
 } | null>;
 
 type JointSnapshot = {
@@ -30,13 +48,39 @@ type JointSnapshot = {
   position: MwendoVec3;
 };
 
+type ContactSnapshot = {
+  key: string;
+  point: MwendoVec3;
+  normalEnd: MwendoVec3;
+  intensity: number;
+};
+
+type GhostSnapshot = {
+  id: number;
+  position: MwendoVec3;
+  quaternion: [number, number, number, number];
+  sleeping: boolean;
+};
+
 type PlayerDebugSnapshot = {
   bodyPosition: MwendoVec3;
+  bodyQuaternion: [number, number, number, number];
   velocityEnd: MwendoVec3;
   facingEnd: MwendoVec3;
   movementMode: MwendoMovementMode;
   grounded: boolean;
+  supportState: MwendoSupportState;
+  sleeping: boolean;
+  mass: number;
+  linearVelocity: MwendoVec3;
+  angularVelocity: MwendoVec3;
+  linearSpeed: number;
+  angularSpeed: number;
   joints: JointSnapshot[];
+  contacts: ContactSnapshot[];
+  trail: MwendoVec3[];
+  ghosts: GhostSnapshot[];
+  liveStepCount: number;
 };
 
 type MwendoPlayerDebugProps = {
@@ -45,6 +89,30 @@ type MwendoPlayerDebugProps = {
   capsuleRadius: number;
   debugStateRef: PlayerDebugStateRef;
   joints: JointRefMap;
+  paused?: boolean;
+  timeScale?: number;
+  manualStepCount?: number;
+};
+
+const EMPTY_DEBUG_SNAPSHOT: PlayerDebugSnapshot = {
+  bodyPosition: [0, 0, 0],
+  bodyQuaternion: [0, 0, 0, 1],
+  velocityEnd: [0, 0, 0],
+  facingEnd: [0, 0, 1],
+  movementMode: "idle",
+  grounded: false,
+  supportState: "none",
+  sleeping: false,
+  mass: 1,
+  linearVelocity: [0, 0, 0],
+  angularVelocity: [0, 0, 0],
+  linearSpeed: 0,
+  angularSpeed: 0,
+  joints: [],
+  contacts: [],
+  trail: [],
+  ghosts: [],
+  liveStepCount: 0,
 };
 
 const tempVector = new Vector3();
@@ -61,8 +129,12 @@ const linkPairs = [
   ["rightUpperLeg", "rightLowerLeg"],
 ] as const;
 
-function toTuple(vector: { x: number; y: number; z: number }): MwendoVec3 {
-  return [vector.x, vector.y, vector.z];
+function toTuple3(value: { x: number; y: number; z: number }): MwendoVec3 {
+  return [value.x, value.y, value.z];
+}
+
+function toTuple4(value: { x: number; y: number; z: number; w: number }) {
+  return [value.x, value.y, value.z, value.w] as [number, number, number, number];
 }
 
 function getGroupPosition(ref: RefObject<Group | null>) {
@@ -73,7 +145,440 @@ function getGroupPosition(ref: RefObject<Group | null>) {
   }
 
   object.getWorldPosition(tempVector);
-  return toTuple(tempVector);
+  return toTuple3(tempVector);
+}
+
+function mixColor(from: string, to: string, amount: number) {
+  return new Color(from)
+    .lerp(new Color(to), Math.max(0, Math.min(1, amount)))
+    .getStyle();
+}
+
+function activityColor(snapshot: PlayerDebugSnapshot) {
+  if (snapshot.sleeping) {
+    return "#5e7388";
+  }
+
+  const energy = Math.min(1, snapshot.linearSpeed / 4 + snapshot.angularSpeed / 10);
+  return mixColor("#8cf0c6", "#ff7b60", energy);
+}
+
+function capsuleCenter(position: MwendoVec3, capsuleHalfHeight: number, capsuleRadius: number): MwendoVec3 {
+  return [
+    position[0],
+    position[1] + capsuleHalfHeight + capsuleRadius,
+    position[2],
+  ];
+}
+
+function CapsuleShell({
+  capsuleHalfHeight,
+  capsuleRadius,
+  snapshot,
+}: {
+  capsuleHalfHeight: number;
+  capsuleRadius: number;
+  snapshot: PlayerDebugSnapshot;
+}) {
+  return (
+    <mesh
+      position={capsuleCenter(snapshot.bodyPosition, capsuleHalfHeight, capsuleRadius)}
+      quaternion={snapshot.bodyQuaternion}
+      renderOrder={8}
+    >
+      <capsuleGeometry args={[capsuleRadius, capsuleHalfHeight * 2, 8, 16]} />
+      <meshBasicMaterial
+        color={activityColor(snapshot)}
+        depthTest={false}
+        depthWrite={false}
+        opacity={snapshot.sleeping ? 0.18 : 0.42}
+        side={DoubleSide}
+        transparent
+        wireframe
+      />
+    </mesh>
+  );
+}
+
+function GhostCapsule({
+  capsuleHalfHeight,
+  capsuleRadius,
+  ghost,
+  opacity,
+}: {
+  capsuleHalfHeight: number;
+  capsuleRadius: number;
+  ghost: GhostSnapshot;
+  opacity: number;
+}) {
+  return (
+    <mesh
+      position={capsuleCenter(ghost.position, capsuleHalfHeight, capsuleRadius)}
+      quaternion={ghost.quaternion}
+      renderOrder={4}
+    >
+      <capsuleGeometry args={[capsuleRadius, capsuleHalfHeight * 2, 8, 16]} />
+      <meshBasicMaterial
+        color="#cfe7ff"
+        depthTest={false}
+        depthWrite={false}
+        opacity={opacity}
+        transparent
+      />
+    </mesh>
+  );
+}
+
+function MassMarker({
+  snapshot,
+  capsuleHalfHeight,
+  capsuleRadius,
+}: {
+  snapshot: PlayerDebugSnapshot;
+  capsuleHalfHeight: number;
+  capsuleRadius: number;
+}) {
+  const radius = 0.05 + snapshot.mass * 0.015;
+
+  return (
+    <mesh
+      position={capsuleCenter(snapshot.bodyPosition, capsuleHalfHeight, capsuleRadius)}
+      renderOrder={10}
+    >
+      <sphereGeometry args={[radius, 10, 10]} />
+      <meshBasicMaterial
+        color={activityColor(snapshot)}
+        depthTest={false}
+        depthWrite={false}
+        opacity={0.72}
+        transparent
+      />
+    </mesh>
+  );
+}
+
+function VelocityVector({ snapshot }: { snapshot: PlayerDebugSnapshot }) {
+  if (snapshot.linearSpeed < 0.05) {
+    return null;
+  }
+
+  return (
+    <Line
+      color="#50d2ff"
+      depthTest={false}
+      lineWidth={1.2}
+      points={[snapshot.bodyPosition, snapshot.velocityEnd]}
+    />
+  );
+}
+
+function AngularVelocityVector({ snapshot }: { snapshot: PlayerDebugSnapshot }) {
+  if (snapshot.angularSpeed < 0.08) {
+    return null;
+  }
+
+  const origin: MwendoVec3 = [
+    snapshot.bodyPosition[0],
+    snapshot.bodyPosition[1] + 0.12,
+    snapshot.bodyPosition[2],
+  ];
+  const end: MwendoVec3 = [
+    origin[0] + snapshot.angularVelocity[0] * 0.12,
+    origin[1] + snapshot.angularVelocity[1] * 0.12,
+    origin[2] + snapshot.angularVelocity[2] * 0.12,
+  ];
+
+  return <Line color="#ff7bf3" depthTest={false} lineWidth={1.2} points={[origin, end]} />;
+}
+
+function TrailLine({ trail, grounded }: { trail: MwendoVec3[]; grounded: boolean }) {
+  if (trail.length < 2) {
+    return null;
+  }
+
+  return (
+    <Line
+      color={grounded ? "#8be4ff" : "#ffd2a0"}
+      depthTest={false}
+      lineWidth={0.9}
+      opacity={0.48}
+      points={trail}
+      transparent
+    />
+  );
+}
+
+function CenterOfMassMarker({ position }: { position: MwendoVec3 }) {
+  const top: MwendoVec3 = [position[0], position[1] + 0.7, position[2]];
+  const right: MwendoVec3 = [position[0] + 0.2, position[1], position[2]];
+  const left: MwendoVec3 = [position[0] - 0.2, position[1], position[2]];
+  const front: MwendoVec3 = [position[0], position[1], position[2] + 0.2];
+  const back: MwendoVec3 = [position[0], position[1], position[2] - 0.2];
+
+  return (
+    <group renderOrder={12}>
+      <Line color="#ffd369" depthTest={false} lineWidth={1.8} points={[position, top]} />
+      <Line color="#ffd369" depthTest={false} lineWidth={1.8} points={[left, right]} />
+      <Line color="#ffd369" depthTest={false} lineWidth={1.8} points={[back, front]} />
+      <mesh position={position}>
+        <sphereGeometry args={[0.11, 14, 14]} />
+        <meshBasicMaterial
+          color="#ffe08b"
+          depthTest={false}
+          depthWrite={false}
+          opacity={0.88}
+          transparent
+        />
+      </mesh>
+    </group>
+  );
+}
+
+function ContactNormal({ contact }: { contact: ContactSnapshot }) {
+  return (
+    <group renderOrder={16}>
+      <Line
+        color={mixColor("#7fe9ff", "#ff8b5b", Math.min(1, contact.intensity))}
+        depthTest={false}
+        lineWidth={1.4}
+        points={[contact.point, contact.normalEnd]}
+      />
+      <mesh position={contact.point}>
+        <sphereGeometry args={[0.05, 10, 10]} />
+        <meshBasicMaterial
+          color="#fff4ba"
+          depthTest={false}
+          depthWrite={false}
+          opacity={0.9}
+          transparent
+        />
+      </mesh>
+    </group>
+  );
+}
+
+function DebugBoard({
+  liveStepCount,
+  manualStepCount,
+  paused,
+  timeScale,
+  snapshot,
+}: {
+  liveStepCount: number;
+  manualStepCount: number;
+  paused: boolean;
+  timeScale: number;
+  snapshot: PlayerDebugSnapshot;
+}) {
+  return (
+    <Billboard
+      position={[
+        snapshot.bodyPosition[0],
+        snapshot.bodyPosition[1] + 2.4,
+        snapshot.bodyPosition[2],
+      ]}
+    >
+      <group>
+        <mesh position={[0, 0, -0.02]}>
+          <planeGeometry args={[4.1, 1.45]} />
+          <meshBasicMaterial
+            color="#061521"
+            depthWrite={false}
+            opacity={0.62}
+            side={DoubleSide}
+            transparent
+          />
+        </mesh>
+        <Text
+          anchorX="center"
+          anchorY="middle"
+          color="#dff7ff"
+          fontSize={0.16}
+          position={[0, 0.38, 0]}
+        >
+          PLAYER DEBUG
+        </Text>
+        <Text
+          anchorX="center"
+          anchorY="middle"
+          color={paused ? "#ff9f80" : "#9af4d1"}
+          fontSize={0.12}
+          position={[0, 0.12, 0]}
+        >
+          {paused ? "paused" : "live"}  x{timeScale.toFixed(2)}  manual {manualStepCount}
+        </Text>
+        <Text
+          anchorX="center"
+          anchorY="middle"
+          color="#acd8e8"
+          fontSize={0.1}
+          position={[0, -0.12, 0]}
+        >
+          {snapshot.movementMode}  {snapshot.grounded ? "grounded" : "airborne"}  support {snapshot.supportState}
+        </Text>
+        <Text
+          anchorX="center"
+          anchorY="middle"
+          color="#7ea4b3"
+          fontSize={0.09}
+          position={[0, -0.38, 0]}
+        >
+          frames {liveStepCount}
+        </Text>
+      </group>
+    </Billboard>
+  );
+}
+
+function buildSnapshot(
+  bodyRef: RefObject<RapierRigidBody | null>,
+  debugStateRef: PlayerDebugStateRef,
+  joints: JointRefMap,
+  world: ReturnType<typeof useRapier>["world"],
+  colliderStates: ReturnType<typeof useRapier>["colliderStates"],
+  liveStepCount: number,
+  trailPoints: MutableRefObject<MwendoVec3[]>,
+  ghostSnapshots: MutableRefObject<GhostSnapshot[]>,
+  ghostId: MutableRefObject<number>,
+  lastGhostAt: MutableRefObject<number>,
+) {
+  const body = bodyRef.current;
+  const debugState = debugStateRef.current;
+
+  if (!body || !debugState) {
+    return EMPTY_DEBUG_SNAPSHOT;
+  }
+
+  const translation = body.translation();
+  const rotation = body.rotation();
+  const linearVelocity = body.linvel();
+  const angularVelocity = body.angvel();
+  const velocityScale = 0.2;
+  const facingScale = 1;
+  const bodyPosition: MwendoVec3 = [translation.x, translation.y, translation.z];
+  const linearSpeed = Math.hypot(linearVelocity.x, linearVelocity.y, linearVelocity.z);
+  const angularSpeed = Math.hypot(angularVelocity.x, angularVelocity.y, angularVelocity.z);
+  const velocityEnd: MwendoVec3 = [
+    translation.x + linearVelocity.x * velocityScale,
+    translation.y + 0.35 + linearVelocity.y * velocityScale,
+    translation.z + linearVelocity.z * velocityScale,
+  ];
+  const facingEnd: MwendoVec3 = [
+    translation.x + Math.sin(debugState.facing) * facingScale,
+    translation.y + 0.6,
+    translation.z + Math.cos(debugState.facing) * facingScale,
+  ];
+
+  const jointRefs: Array<[string, RefObject<Group | null>]> = [
+    ["pelvis", joints.pelvisRef],
+    ["spine", joints.spineRef],
+    ["head", joints.headRef],
+    ["leftUpperArm", joints.leftUpperArmRef],
+    ["leftLowerArm", joints.leftLowerArmRef],
+    ["rightUpperArm", joints.rightUpperArmRef],
+    ["rightLowerArm", joints.rightLowerArmRef],
+    ["leftUpperLeg", joints.leftUpperLegRef],
+    ["leftLowerLeg", joints.leftLowerLegRef],
+    ["rightUpperLeg", joints.rightUpperLegRef],
+    ["rightLowerLeg", joints.rightLowerLegRef],
+  ];
+  const jointEntries: JointSnapshot[] = jointRefs.flatMap(([key, ref]) => {
+    const position = getGroupPosition(ref);
+    return position ? [{ key, position }] : [];
+  });
+
+  const nextTrail = [...(trailPoints.current ?? []), bodyPosition].slice(-18);
+  trailPoints.current = nextTrail;
+
+  const contacts: ContactSnapshot[] = [];
+  for (let index = 0; index < body.numColliders(); index += 1) {
+    const collider = body.collider(index);
+
+    if (!collider) {
+      continue;
+    }
+
+    for (const colliderState of colliderStates.values()) {
+      const otherCollider = colliderState.collider;
+
+      if (!otherCollider || otherCollider.handle === collider.handle) {
+        continue;
+      }
+
+      const parent = otherCollider.parent();
+
+      if (parent?.handle === body.handle) {
+        continue;
+      }
+
+      world.contactPair(collider, otherCollider, (manifold, flipped) => {
+        const normal = manifold.normal();
+        const orientation = flipped ? -1 : 1;
+
+        for (let contactIndex = 0; contactIndex < manifold.numSolverContacts(); contactIndex += 1) {
+          const point = manifold.solverContactPoint(contactIndex);
+          const localPoint: MwendoVec3 = [point.x, point.y, point.z];
+          const normalEnd: MwendoVec3 = [
+            localPoint[0] + normal.x * 0.42 * orientation,
+            localPoint[1] + normal.y * 0.42 * orientation,
+            localPoint[2] + normal.z * 0.42 * orientation,
+          ];
+          const intensity =
+            manifold.numContacts() > 0
+              ? Math.min(
+                  1,
+                  manifold.contactImpulse(
+                    Math.min(contactIndex, manifold.numContacts() - 1),
+                  ) / 2.8,
+                )
+              : 0.15;
+
+          contacts.push({
+            key: `${collider.handle}:${otherCollider.handle}:${contactIndex}`,
+            point: localPoint,
+            normalEnd,
+            intensity,
+          });
+        }
+      });
+    }
+  }
+
+  const now = performance.now();
+  if (now - lastGhostAt.current > 180) {
+    ghostId.current += 1;
+    ghostSnapshots.current = [
+      {
+        id: ghostId.current,
+        position: bodyPosition,
+        quaternion: toTuple4(rotation),
+        sleeping: body.isSleeping(),
+      },
+      ...(ghostSnapshots.current ?? []),
+    ].slice(0, 4);
+    lastGhostAt.current = now;
+  }
+
+  return {
+    bodyPosition,
+    bodyQuaternion: toTuple4(rotation),
+    velocityEnd,
+    facingEnd,
+    movementMode: debugState.movementMode,
+    grounded: debugState.grounded,
+    supportState: debugState.supportState,
+    sleeping: body.isSleeping(),
+    mass: typeof body.mass === "function" ? body.mass() : 1,
+    linearVelocity: toTuple3(linearVelocity),
+    angularVelocity: toTuple3(angularVelocity),
+    linearSpeed,
+    angularSpeed,
+    joints: jointEntries,
+    contacts,
+    trail: nextTrail,
+    ghosts: ghostSnapshots.current ?? [],
+    liveStepCount,
+  } satisfies PlayerDebugSnapshot;
 }
 
 export function MwendoPlayerDebug({
@@ -82,94 +587,121 @@ export function MwendoPlayerDebug({
   capsuleRadius,
   debugStateRef,
   joints,
+  paused = false,
+  timeScale = 1,
+  manualStepCount = 0,
 }: MwendoPlayerDebugProps) {
-  const [snapshot, setSnapshot] = useState<PlayerDebugSnapshot | null>(null);
-  const frameCounter = useRef(0);
+  const rapier = useRapier();
+  const [snapshot, setSnapshot] = useState<PlayerDebugSnapshot>(EMPTY_DEBUG_SNAPSHOT);
+  const capsuleMeshRef = useRef<Mesh>(null);
+  const liveStepCount = useRef(0);
+  const trailPoints = useRef<MwendoVec3[]>([]);
+  const ghostSnapshots = useRef<GhostSnapshot[]>([]);
+  const ghostId = useRef(0);
+  const lastGhostAt = useRef(0);
+
+  useEffect(() => {
+    startTransition(() => {
+      setSnapshot(
+        buildSnapshot(
+          bodyRef,
+          debugStateRef,
+          joints,
+          rapier.world,
+          rapier.colliderStates,
+          liveStepCount.current,
+          trailPoints,
+          ghostSnapshots,
+          ghostId,
+          lastGhostAt,
+        ),
+      );
+    });
+  }, [bodyRef, debugStateRef, joints, rapier.colliderStates, rapier.world]);
+
+  useAfterPhysicsStep(() => {
+    liveStepCount.current += 1;
+
+    const nextSnapshot = buildSnapshot(
+      bodyRef,
+      debugStateRef,
+      joints,
+      rapier.world,
+      rapier.colliderStates,
+      liveStepCount.current,
+      trailPoints,
+      ghostSnapshots,
+      ghostId,
+      lastGhostAt,
+    );
+
+    startTransition(() => {
+      setSnapshot(nextSnapshot);
+    });
+  });
 
   useFrame(() => {
-    frameCounter.current += 1;
-
-    if (frameCounter.current % 2 !== 0) {
-      return;
-    }
-
     const body = bodyRef.current;
-    const debugState = debugStateRef.current;
+    const capsuleMesh = capsuleMeshRef.current;
 
-    if (!body || !debugState) {
+    if (!body || !capsuleMesh) {
       return;
     }
 
     const translation = body.translation();
-    const velocity = body.linvel();
-    const velocityScale = 0.2;
-    const facingScale = 1;
-    const bodyPosition: MwendoVec3 = [translation.x, translation.y, translation.z];
-    const velocityEnd: MwendoVec3 = [
-      translation.x + velocity.x * velocityScale,
-      translation.y + 0.35 + velocity.y * velocityScale,
-      translation.z + velocity.z * velocityScale,
-    ];
-    const facingEnd: MwendoVec3 = [
-      translation.x + Math.sin(debugState.facing) * facingScale,
-      translation.y + 0.6,
-      translation.z + Math.cos(debugState.facing) * facingScale,
-    ];
-    const jointRefs: Array<[string, RefObject<Group | null>]> = [
-      ["pelvis", joints.pelvisRef],
-      ["spine", joints.spineRef],
-      ["head", joints.headRef],
-      ["leftUpperArm", joints.leftUpperArmRef],
-      ["leftLowerArm", joints.leftLowerArmRef],
-      ["rightUpperArm", joints.rightUpperArmRef],
-      ["rightLowerArm", joints.rightLowerArmRef],
-      ["leftUpperLeg", joints.leftUpperLegRef],
-      ["leftLowerLeg", joints.leftLowerLegRef],
-      ["rightUpperLeg", joints.rightUpperLegRef],
-      ["rightLowerLeg", joints.rightLowerLegRef],
-    ];
-    const jointEntries: JointSnapshot[] = jointRefs.flatMap(([key, ref]) => {
-      const position = getGroupPosition(ref);
-      return position ? [{ key, position }] : [];
-    });
-
-    startTransition(() => {
-      setSnapshot({
-        bodyPosition,
-        velocityEnd,
-        facingEnd,
-        movementMode: debugState.movementMode,
-        grounded: debugState.grounded,
-        joints: jointEntries,
-      });
-    });
+    capsuleMesh.position.set(
+      translation.x,
+      translation.y + capsuleHalfHeight + capsuleRadius,
+      translation.z,
+    );
   });
 
-  if (!snapshot) {
-    return null;
-  }
-
   const jointMap = new Map(snapshot.joints.map((joint) => [joint.key, joint.position]));
-  const debugLabelPosition: MwendoVec3 = [
-    snapshot.bodyPosition[0],
-    snapshot.bodyPosition[1] + 2.15,
-    snapshot.bodyPosition[2],
-  ];
-  const capsulePosition: MwendoVec3 = [
-    snapshot.bodyPosition[0],
-    snapshot.bodyPosition[1] + capsuleHalfHeight + capsuleRadius,
-    snapshot.bodyPosition[2],
-  ];
 
   return (
     <group userData={{ mwendoIgnoreCameraOcclusion: true }}>
-      <mesh position={capsulePosition} renderOrder={12}>
+      <DebugBoard
+        liveStepCount={snapshot.liveStepCount}
+        manualStepCount={manualStepCount}
+        paused={paused}
+        snapshot={snapshot}
+        timeScale={timeScale}
+      />
+
+      {snapshot.ghosts.map((ghost, index) => (
+        <GhostCapsule
+          key={ghost.id}
+          capsuleHalfHeight={capsuleHalfHeight}
+          capsuleRadius={capsuleRadius}
+          ghost={ghost}
+          opacity={Math.max(0.04, 0.16 - index * 0.03)}
+        />
+      ))}
+
+      <TrailLine grounded={snapshot.grounded} trail={snapshot.trail} />
+
+      <group>
+        <CapsuleShell
+          capsuleHalfHeight={capsuleHalfHeight}
+          capsuleRadius={capsuleRadius}
+          snapshot={snapshot}
+        />
+        <MassMarker
+          capsuleHalfHeight={capsuleHalfHeight}
+          capsuleRadius={capsuleRadius}
+          snapshot={snapshot}
+        />
+        <VelocityVector snapshot={snapshot} />
+        <AngularVelocityVector snapshot={snapshot} />
+      </group>
+
+      <mesh ref={capsuleMeshRef} renderOrder={12}>
         <capsuleGeometry args={[capsuleRadius, capsuleHalfHeight * 2, 8, 16]} />
         <meshBasicMaterial
           color="#8fe6ff"
           depthTest={false}
           depthWrite={false}
-          opacity={0.28}
+          opacity={0.18}
           side={DoubleSide}
           transparent
           wireframe
@@ -235,47 +767,13 @@ export function MwendoPlayerDebug({
         </mesh>
       ))}
 
-      <Billboard position={debugLabelPosition}>
-        <group>
-          <mesh position={[0, 0, -0.02]}>
-            <planeGeometry args={[2.4, 0.78]} />
-            <meshBasicMaterial
-              color="#081725"
-              depthWrite={false}
-              opacity={0.58}
-              side={DoubleSide}
-              transparent
-            />
-          </mesh>
-          <Text
-            anchorX="center"
-            anchorY="middle"
-            color="#e8f8ff"
-            fontSize={0.12}
-            position={[0, 0.12, 0]}
-          >
-            PLAYER DEBUG
-          </Text>
-          <Text
-            anchorX="center"
-            anchorY="middle"
-            color="#9fd6e8"
-            fontSize={0.09}
-            position={[0, -0.08, 0]}
-          >
-            {snapshot.movementMode}
-          </Text>
-          <Text
-            anchorX="center"
-            anchorY="middle"
-            color={snapshot.grounded ? "#9af4d1" : "#ffb790"}
-            fontSize={0.08}
-            position={[0, -0.26, 0]}
-          >
-            {snapshot.grounded ? "grounded" : "airborne"}
-          </Text>
-        </group>
-      </Billboard>
+      {snapshot.contacts.map((contact) => (
+        <ContactNormal key={contact.key} contact={contact} />
+      ))}
+
+      <CenterOfMassMarker
+        position={capsuleCenter(snapshot.bodyPosition, capsuleHalfHeight, capsuleRadius)}
+      />
     </group>
   );
 }
