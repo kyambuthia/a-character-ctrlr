@@ -1,5 +1,5 @@
 {
-  "name": "a-character-ctrlr",
+  "name": "a-character-controller",
   "version": "0.1.0",
   "description": "A React Three Fiber third-person controller library with a primitive player, follow camera, and ragdoll debugging sandbox.",
   "license": "MIT",
@@ -17,11 +17,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kyambuthia/a-character-ctrlr.git"
+    "url": "git+https://github.com/kyambuthia/a-character-controller.git"
   },
-  "homepage": "https://github.com/kyambuthia/a-character-ctrlr#readme",
+  "homepage": "https://github.com/kyambuthia/a-character-controller#readme",
   "bugs": {
-    "url": "https://github.com/kyambuthia/a-character-ctrlr/issues"
+    "url": "https://github.com/kyambuthia/a-character-controller/issues"
   },
   "keywords": [
     "react-three-fiber",

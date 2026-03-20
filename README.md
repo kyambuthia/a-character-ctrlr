@@ -1,6 +1,12 @@
-# CharacterCtrlr
+# a-character-controller
 
-`CharacterCtrlr` is a hybrid `library + demo` project for a React Three Fiber third-person controller stack. It ships a reusable primitive player, a follow camera with camera-occlusion handling, scoped controller state, a humanoid ragdoll dummy, and an in-world ragdoll debug lab.
+`a-character-controller` is a hybrid `library + demo` project for a React Three Fiber third-person controller stack. It ships a reusable primitive player, a follow camera with camera-occlusion handling, scoped controller state, a humanoid ragdoll dummy, and an in-world ragdoll debug lab.
+
+Package name:
+
+```bash
+npm install a-character-controller
+```
 
 ## Production active-ragdoll direction
 
@@ -41,10 +47,29 @@ What is not finished yet:
 - authored interaction systems for doors, vehicles, weapons, and golf
 - skinned-character animation or motion-matching backends
 
+## Current issues
+
+The active-ragdoll controller is still experimental and currently unstable.
+
+Known problems:
+
+- the active ragdoll can fail to settle into a reliable neutral stand and may kneel, collapse, or oscillate after spawn
+- first-step and continuous walking behavior are not yet dependable, especially when balance recovery, support switching, and leg drive interact
+- turning and prolonged running can still destabilize the torso and push the controller into stumble/fall recovery
+- ground detection has been improved with hysteresis and downward ground probes, but support/grounded transitions are still under active tuning
+- the Mixamo-driven target path is useful for motion reference, but it does not yet guarantee stable physical walking
+- the capsule controller remains the more reliable baseline; the active ragdoll is the current research path
+
+Important engineering note:
+
+- the current instability is not mainly a Rapier problem
+- high COM plus small feet creates inverted-pendulum instability in any engine
+- the gait FSM, balance strategy, support switching, and step-placement logic are the primary controller-side responsibilities still under active work
+
 ## Install
 
 ```bash
-npm install a-character-ctrlr react react-dom three @react-three/fiber @react-three/rapier @react-three/drei
+npm install a-character-controller react react-dom three @react-three/fiber @react-three/rapier @react-three/drei
 ```
 
 ## Quick start
@@ -52,7 +77,7 @@ npm install a-character-ctrlr react react-dom three @react-three/fiber @react-th
 ```tsx
 import { Canvas } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
-import { CharacterCtrlrCameraRig, CharacterCtrlrPlayer, CharacterCtrlrProvider } from "a-character-ctrlr";
+import { CharacterCtrlrCameraRig, CharacterCtrlrPlayer, CharacterCtrlrProvider } from "a-character-controller";
 
 export function Scene() {
   return (
@@ -81,7 +106,7 @@ import {
   CharacterCtrlrPlayer,
   CharacterCtrlrProvider,
   useCharacterCtrlrInputController,
-} from "a-character-ctrlr";
+} from "a-character-controller";
 
 function BotDriver() {
   const controller = useCharacterCtrlrInputController();
@@ -175,6 +200,10 @@ Production note:
   - step length, width, and clearance targets
   - locomotion family configs
   - recovery and deterministic gait re-entry
+- grounded-state recovery now uses:
+  - contact hysteresis for grounded/airborne transitions
+  - delayed jump-contact clearing
+  - downward Rapier ground probes under the feet as a fallback when foot contact callbacks are unreliable
 - standing is now handled as a dedicated support problem rather than just an idle gait:
   - pelvis support is solved relative to the foot sole plane
   - idle and low-speed double-support use a stand-assist path
@@ -217,6 +246,7 @@ Demo tip:
 - the demo now defaults to the active ragdoll player
 - add `?player=capsule` to the dev URL to load the capsule baseline instead
 - add `?motion=mixamo` to enable the optional Mixamo target path in the ragdoll demo once the FBX files are placed in `public/mixamo`
+- the current ragdoll debugging/tuning path is `http://localhost:5173/?player=ragdoll&motion=mixamo`
 
 Mixamo tip:
 

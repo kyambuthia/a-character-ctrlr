@@ -3,6 +3,7 @@ import {
   type CollisionEnterPayload,
   type CollisionExitPayload,
   type RapierRigidBody,
+  useRapier,
 } from "@react-three/rapier";
 import {
   useEffect,
@@ -86,6 +87,11 @@ const STAND_FOOT_FORWARD_OFFSET = 0.12;
 const STAND_SEGMENT_MAX_TORQUE = 0.6;
 const GROUNDED_GRACE_PERIOD = 0.08;
 const GROUNDING_MIN_DURATION = 0.03;
+const GROUND_PROBE_ORIGIN_OFFSET = 0.06;
+const GROUND_PROBE_MAX_DISTANCE = 0.26;
+const GROUND_PROBE_NORMAL_MIN_Y = 0.35;
+const STAND_BOOTSTRAP_SETTLE_DURATION = 0.25;
+const MIXAMO_CONTROL_ENABLED = false;
 const REVOLUTE_JOINT_LIMITS = Object.fromEntries(
   CHARACTER_CTRLR_HUMANOID_REVOLUTE_JOINT_DEFINITIONS.map((definition) => [
     definition.key,
@@ -905,13 +911,13 @@ function applyStandingPoseTargets(targets: PhasePoseTargets) {
       ...targets.left,
       hip: 0,
       knee: 0,
-      ankle: 0,
+      ankle: 0.04,
     },
     right: {
       ...targets.right,
       hip: 0,
       knee: 0,
-      ankle: 0,
+      ankle: 0.04,
     },
   } satisfies PhasePoseTargets;
 }
@@ -972,6 +978,7 @@ export function CharacterCtrlrActiveRagdollPlayer({
   onJump,
   onLand,
 }: CharacterCtrlrActiveRagdollPlayerProps) {
+  const { rapier, world } = useRapier();
   const storeApi = useCharacterCtrlrStoreApi();
   const setPlayerSnapshot = useCharacterCtrlrStore((state) => state.setPlayerSnapshot);
   const bodyRefs = useMemo(() => createCharacterCtrlrHumanoidBodyRefs(), []);
@@ -1016,6 +1023,7 @@ export function CharacterCtrlrActiveRagdollPlayer({
   const jumpContactClearPendingRef = useRef(false);
   const contactTimestampsRef = useRef<{ left: number; right: number }>({ left: 0, right: 0 });
   const smoothedGaitEffortRef = useRef(0);
+  const standBootstrapTimerRef = useRef(0);
 
   const commitGrounded = (nextGrounded: boolean) => {
     if (groundedRef.current === nextGrounded) {
@@ -1196,23 +1204,63 @@ export function CharacterCtrlrActiveRagdollPlayer({
         : hasMovementInput
           ? "walk"
           : "idle";
-    const speed =
-      locomotionMode === "run"
-        ? runSpeed
-        : locomotionMode === "walk"
-          ? walkSpeed
-          : locomotionMode === "crouch"
-            ? crouchSpeed
-            : 0;
 
     const leftFootPos = leftFoot.translation();
     const rightFootPos = rightFoot.translation();
-    const leftFootBottomY = leftFootPos.y - 0.08;
-    const rightFootBottomY = rightFootPos.y - 0.08;
-    const lowestFootY = Math.min(leftFootBottomY, rightFootBottomY);
-    const feetNearGround = lowestFootY < 0.12 && Math.abs(pelvis.linvel().y) < 2.0;
+    const ownBodyHandles = new Set<number>();
 
-    const effectiveGroundedSignal = rawContactsGroundedRef.current || (feetNearGround && !jumpContactClearPendingRef.current);
+    for (const bodyRef of bodyRefList) {
+      const body = bodyRef.current;
+
+      if (!body) {
+        continue;
+      }
+
+      ownBodyHandles.add(body.handle);
+    }
+
+    const groundProbePredicate = (collider: { parent: () => { handle: number } | null }) => {
+      const parentBody = collider.parent();
+      return !parentBody || !ownBodyHandles.has(parentBody.handle);
+    };
+    const castGroundProbe = (origin: { x: number; y: number; z: number }) => {
+      const hit = world.castRayAndGetNormal(
+        new rapier.Ray(
+          {
+            x: origin.x,
+            y: origin.y + GROUND_PROBE_ORIGIN_OFFSET,
+            z: origin.z,
+          },
+          { x: 0, y: -1, z: 0 },
+        ),
+        GROUND_PROBE_MAX_DISTANCE,
+        false,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        groundProbePredicate,
+      );
+
+      return hit && hit.normal.y >= GROUND_PROBE_NORMAL_MIN_Y ? hit : null;
+    };
+    const leftGroundProbeHit = castGroundProbe(leftFootPos);
+    const rightGroundProbeHit = castGroundProbe(rightFootPos);
+    const probedSupportState: CharacterCtrlrSupportState =
+      leftGroundProbeHit && rightGroundProbeHit
+        ? "double"
+        : leftGroundProbeHit
+          ? "left"
+          : rightGroundProbeHit
+            ? "right"
+            : "none";
+    const effectiveGroundedSignal =
+      rawContactsGroundedRef.current
+      || (
+        probedSupportState !== "none"
+        && !jumpContactClearPendingRef.current
+        && Math.abs(pelvis.linvel().y) < 2.0
+      );
 
     if (effectiveGroundedSignal) {
       groundedGraceTimerRef.current = 0;
@@ -1222,17 +1270,8 @@ export function CharacterCtrlrActiveRagdollPlayer({
         commitGrounded(true);
       }
 
-      if (feetNearGround && !rawContactsGroundedRef.current) {
-        const nearLeftGround = leftFootBottomY < 0.12;
-        const nearRightGround = rightFootBottomY < 0.12;
-
-        if (nearLeftGround && nearRightGround) {
-          supportStateRef.current = "double";
-        } else if (nearLeftGround) {
-          supportStateRef.current = "left";
-        } else if (nearRightGround) {
-          supportStateRef.current = "right";
-        }
+      if (!rawContactsGroundedRef.current && probedSupportState !== "none") {
+        supportStateRef.current = probedSupportState;
       }
     } else {
       groundingConfirmTimerRef.current = 0;
@@ -1242,13 +1281,42 @@ export function CharacterCtrlrActiveRagdollPlayer({
 
         if (groundedGraceTimerRef.current >= GROUNDED_GRACE_PERIOD) {
           commitGrounded(false);
+
+          if (!rawContactsGroundedRef.current) {
+            supportStateRef.current = "none";
+          }
         }
+      } else if (!rawContactsGroundedRef.current) {
+        supportStateRef.current = "none";
       }
     }
 
     const actualSupportState = supportStateRef.current;
     const grounded = groundedRef.current;
-    const gaitConfig = getGaitConfig(locomotionMode);
+    const currentVelocity = pelvis.linvel();
+    const pelvisMass = pelvis.mass();
+    const horizontalSpeed = Math.hypot(currentVelocity.x, currentVelocity.z);
+    const standingAssistRequested =
+      grounded
+      && (
+        !hasMovementInput
+        || horizontalSpeed < STAND_ASSIST_MAX_SPEED
+      );
+    const standBootstrapActive =
+      standingAssistRequested
+      && standBootstrapTimerRef.current < STAND_BOOTSTRAP_SETTLE_DURATION;
+    const locomotionCommandActive = hasMovementInput && !standBootstrapActive;
+    const activeLocomotionMode: CharacterCtrlrMovementMode =
+      locomotionCommandActive ? locomotionMode : "idle";
+    const activeLocomotionSpeed =
+      activeLocomotionMode === "run"
+        ? runSpeed
+        : activeLocomotionMode === "walk"
+          ? walkSpeed
+          : activeLocomotionMode === "crouch"
+            ? crouchSpeed
+            : 0;
+    const gaitConfig = getGaitConfig(activeLocomotionMode);
     const locomotionBlend = Math.min(
       1,
       acceleration
@@ -1261,10 +1329,10 @@ export function CharacterCtrlrActiveRagdollPlayer({
             : 0.82
       ),
     );
-    const currentVelocity = pelvis.linvel();
-    const pelvisMass = pelvis.mass();
-    const deltaVelocityX = (movement.x * speed - currentVelocity.x) * locomotionBlend;
-    const deltaVelocityZ = (movement.z * speed - currentVelocity.z) * locomotionBlend;
+    const commandedVelocityX = locomotionCommandActive ? movement.x * activeLocomotionSpeed : 0;
+    const commandedVelocityZ = locomotionCommandActive ? movement.z * activeLocomotionSpeed : 0;
+    const deltaVelocityX = (commandedVelocityX - currentVelocity.x) * locomotionBlend;
+    const deltaVelocityZ = (commandedVelocityZ - currentVelocity.z) * locomotionBlend;
 
     pelvis.applyImpulse(
       {
@@ -1329,17 +1397,10 @@ export function CharacterCtrlrActiveRagdollPlayer({
 
     const pelvisTorqueScale = grounded ? 1 : airControl;
     const yawError = angleDifference(pelvisEuler.y, targetFacing);
-    const horizontalSpeed = Math.hypot(currentVelocity.x, currentVelocity.z);
-    const standingAssistRequested =
-      grounded
-      && (
-        !hasMovementInput
-        || horizontalSpeed < STAND_ASSIST_MAX_SPEED
-      );
     const speedRatio = Math.min(1, horizontalSpeed / Math.max(0.001, runSpeed));
-    const commandEffort = hasMovementInput ? gaitConfig.commandEffort : 0;
+    const commandEffort = locomotionCommandActive ? gaitConfig.commandEffort : 0;
     const rawGaitEffort =
-      grounded && hasMovementInput ? Math.max(speedRatio, commandEffort) : speedRatio;
+      grounded && locomotionCommandActive ? Math.max(speedRatio, commandEffort) : speedRatio;
     smoothedGaitEffortRef.current = MathUtils.damp(
       smoothedGaitEffortRef.current,
       rawGaitEffort,
@@ -1356,12 +1417,12 @@ export function CharacterCtrlrActiveRagdollPlayer({
       gaitConfig.cadenceRange[1],
       gaitEffort,
     );
-    if (grounded && hasMovementInput) {
+    if (grounded && locomotionCommandActive) {
       gaitPhaseRef.current += delta * cadence;
     }
 
     const supportStateForPhase =
-      standingAssistRequested && supportStateAfterJump !== "none"
+      standBootstrapActive && supportStateAfterJump !== "none"
         ? "double"
         : supportStateAfterJump;
     
@@ -1375,7 +1436,16 @@ export function CharacterCtrlrActiveRagdollPlayer({
         deriveGaitPhaseDuration("airborne", gaitEffort, gaitConfig),
         jumpTriggered ? "jump" : "support-lost",
       );
-    } else if (!hasMovementInput && gaitState.phase !== "idle" && canTransition) {
+    } else if (standBootstrapActive) {
+      transitionGaitState(
+        gaitState,
+        locomotionCommandActive ? "double-support" : "idle",
+        locomotionCommandActive
+          ? deriveGaitPhaseDuration("double-support", gaitEffort, gaitConfig)
+          : 0,
+        locomotionCommandActive ? "movement-start" : "idle-no-input",
+      );
+    } else if (!locomotionCommandActive && gaitState.phase !== "idle" && canTransition) {
       transitionGaitState(gaitState, "idle", 0, "idle-no-input");
     } else if (supportStateForPhase === "left" && gaitState.phase !== "left-stance" && canTransition) {
       transitionGaitState(
@@ -1458,7 +1528,7 @@ export function CharacterCtrlrActiveRagdollPlayer({
       : currentVelocity.y;
     const groundedAfterControl = groundedRef.current;
     const nextMovementMode: CharacterCtrlrMovementMode = groundedAfterControl
-      ? locomotionMode
+      ? activeLocomotionMode
       : predictedVelocityY > 0.35
         ? "jump"
         : "fall";
@@ -1529,14 +1599,14 @@ export function CharacterCtrlrActiveRagdollPlayer({
         ? "double"
         : supportStateAfterJump;
     const stepLengthTarget =
-      groundedAfterControl && hasMovementInput
+      groundedAfterControl && locomotionCommandActive
         ? MathUtils.lerp(gaitConfig.step.length[0], gaitConfig.step.length[1], gaitEffort)
         : 0;
     const stepWidthTarget = groundedAfterControl
       ? MathUtils.lerp(gaitConfig.step.width[0], gaitConfig.step.width[1], postureAmount)
       : 0.2;
     const stepHeightTarget =
-      groundedAfterControl && hasMovementInput
+      groundedAfterControl && locomotionCommandActive
         ? MathUtils.lerp(gaitConfig.step.height[0], gaitConfig.step.height[1], gaitEffort)
         : 0.02;
 
@@ -1635,7 +1705,7 @@ export function CharacterCtrlrActiveRagdollPlayer({
           (supportCenter.x - rootPosition.x) * facingRight.x
           + (supportCenter.z - rootPosition.z) * facingRight.z;
         const desiredPelvisLead =
-          groundedAfterControl && hasMovementInput
+          groundedAfterControl && locomotionCommandActive
             ? stepLengthTarget
               * MathUtils.lerp(
                 gaitConfig.step.pelvisLeadScale[0],
@@ -2042,6 +2112,24 @@ export function CharacterCtrlrActiveRagdollPlayer({
       && Math.abs(supportForwardError) < 0.24
       && Math.abs(captureForwardError) < 0.24
       && Math.abs(captureLateralError) < 0.18;
+    const standBootstrapStable =
+      groundedAfterControl
+      && supportStateForControl === "double"
+      && supportHeight > 0.94
+      && pelvisTilt < 0.24
+      && chestTilt < 0.32
+      && Math.abs(supportLateralError) < 0.12
+      && Math.abs(supportForwardError) < 0.16
+      && Math.abs(captureForwardError) < 0.16
+      && Math.abs(captureLateralError) < 0.12;
+
+    if (standingAssistRequested) {
+      standBootstrapTimerRef.current = standBootstrapStable
+        ? standBootstrapTimerRef.current + delta
+        : 0;
+    } else {
+      standBootstrapTimerRef.current = 0;
+    }
 
     if (jumpTriggered || (!groundedAfterControl && predictedVelocityY > 0.35)) {
       transitionRecoveryState(recoveryState, "jumping");
@@ -2049,6 +2137,11 @@ export function CharacterCtrlrActiveRagdollPlayer({
       transitionRecoveryState(recoveryState, "landing");
     } else if (recoveryState.mode === "jumping" && !groundedAfterControl) {
       transitionRecoveryState(recoveryState, "jumping");
+    } else if (standBootstrapActive && groundedAfterControl) {
+      transitionRecoveryState(
+        recoveryState,
+        standBootstrapStable ? "stable" : "landing",
+      );
     } else if (severeInstability) {
       transitionRecoveryState(recoveryState, "fallen");
     } else if (recoveryState.mode === "fallen") {
@@ -2092,7 +2185,7 @@ export function CharacterCtrlrActiveRagdollPlayer({
     if (standingSupport) {
       phasePoseTargets = applyStandingPoseTargets(phasePoseTargets);
     }
-    if (mixamoSource && mixamoPoseRef.current) {
+    if (MIXAMO_CONTROL_ENABLED && mixamoSource && mixamoPoseRef.current && !standBootstrapActive) {
       phasePoseTargets = blendPhasePoseTargets(
         phasePoseTargets,
         mixamoPoseRef.current,
@@ -2113,7 +2206,7 @@ export function CharacterCtrlrActiveRagdollPlayer({
     const chestTorqueClamp = MathUtils.lerp(0.38, 0.58, gaitEffort);
 
     const forwardLeanCompPitch =
-      groundedAfterControl && locomotionMode === "run"
+      groundedAfterControl && activeLocomotionMode === "run"
         ? MathUtils.clamp(captureForwardError * horizontalSpeed * 0.15, -0.2, 0.4)
         : 0;
 
@@ -2206,7 +2299,7 @@ export function CharacterCtrlrActiveRagdollPlayer({
     if (
       allowGaitStepping
       && groundedAfterControl
-      && hasMovementInput
+      && locomotionCommandActive
       && (gaitState.phase === "left-stance" || gaitState.phase === "right-stance")
       && gaitState.phaseDuration > 0
     ) {
@@ -2225,7 +2318,7 @@ export function CharacterCtrlrActiveRagdollPlayer({
       );
     }
 
-    if (allowGaitStepping && groundedAfterControl && swingSide && hasMovementInput) {
+    if (allowGaitStepping && groundedAfterControl && swingSide && locomotionCommandActive) {
       const swingFoot = swingSide === "left" ? leftFoot : rightFoot;
       const swingFootPosition = swingFoot.translation();
       const swingVelocity = swingFoot.linvel();
@@ -2335,11 +2428,11 @@ export function CharacterCtrlrActiveRagdollPlayer({
       swingFoot.applyImpulse(
         {
           x:
-            (movement.x * speed * swingDrive - swingVelocity.x) * swingMass * swingBlend
+            (commandedVelocityX * swingDrive - swingVelocity.x) * swingMass * swingBlend
             + swingCorrection.x,
           y: swingHeightDrive,
           z:
-            (movement.z * speed * swingDrive - swingVelocity.z) * swingMass * swingBlend
+            (commandedVelocityZ * swingDrive - swingVelocity.z) * swingMass * swingBlend
             + swingCorrection.z,
         },
         true,
@@ -2348,12 +2441,11 @@ export function CharacterCtrlrActiveRagdollPlayer({
 
     const resolveJointTarget = (
       key: CharacterCtrlrHumanoidRevoluteJointKey,
-      targetOffset: number,
+      targetPosition: number,
     ) => {
-      const baseline = jointCalibrationRef.current[key] ?? 0;
       const [min, max] = REVOLUTE_JOINT_LIMITS[key];
 
-      return MathUtils.clamp(baseline + targetOffset, min, max);
+      return MathUtils.clamp(targetPosition, min, max);
     };
 
     const hipLeftTarget = resolveJointTarget(
@@ -2788,7 +2880,7 @@ export function CharacterCtrlrActiveRagdollPlayer({
 
   return (
     <>
-      {mixamoSource ? (
+      {MIXAMO_CONTROL_ENABLED && mixamoSource ? (
         <CharacterCtrlrMixamoMotionDriver
           groundedRef={groundedRef}
           hasMovementInputRef={hasMovementInputRef}

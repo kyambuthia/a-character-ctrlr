@@ -64,7 +64,7 @@ http://localhost:5173/?player=ragdoll&motion=mixamo
 ## Library Usage
 
 ```tsx
-import { CharacterCtrlrActiveRagdollPlayer } from "a-character-ctrlr";
+import { CharacterCtrlrActiveRagdollPlayer } from "a-character-controller";
 
 <CharacterCtrlrActiveRagdollPlayer
   controls="keyboard"

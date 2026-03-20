@@ -21,6 +21,26 @@ That means:
 - compute only the metrics we can act on in the same frame
 - make visual debugging cheap enough to leave available during day-to-day development
 
+## What is not Rapier's fault
+
+The current instability should not be framed as a physics-engine failure.
+
+These problems are primarily on the controller side:
+
+- high center of mass plus small feet creates inverted-pendulum instability in any rigid-body engine
+- gait FSM quality is entirely a controller-design problem
+- balance strategy quality is engine-agnostic:
+  - capture-point logic
+  - PD torque design
+  - support switching
+  - step placement
+
+Implication:
+
+- do not treat engine swapping as the main path to a fix
+- treat morphology, support geometry, gait logic, and balance control as the main tuning surface
+- when the active ragdoll fails to stand or walk, first inspect COM location, support area, joint authority, and state-machine transitions before blaming collision callbacks or solver behavior
+
 ## Runtime architecture target
 
 The intended production control pipeline is:
@@ -75,7 +95,7 @@ Rules:
 
 ## Phase 0: Numerical and rig foundation
 
-Status: in progress
+Status: partially complete
 
 Objective:
 
@@ -106,9 +126,15 @@ Exit criteria:
 - no large initial joint preload
 - no head/chest or leg-chain overlap in bind pose
 
+Current state:
+
+- joint calibration against live bind pose has been added
+- lower-body proportions and anchors have already been revised once
+- the rig is still not stable enough in neutral standing, so this phase is not truly closed
+
 ## Phase 1: Library-level observability
 
-Status: not started
+Status: mostly complete
 
 Objective:
 
@@ -139,9 +165,15 @@ Exit criteria:
 - every locomotion failure is explainable from the debug overlay or recorded snapshot
 - the debug overlay can be enabled over LAN on mobile without tanking the simulation
 
+Current state:
+
+- locomotion debug state, gait phase, transition reasons, support state, COM, capture point, footfall targets, and recovery state are already exposed from the library
+- ragdoll debug pacing has been fixed so pose-attached visualization renders on the current frame
+- joint target/error visualization is still incomplete, and profiling counters are not yet a finished tuning surface
+
 ## Phase 2: Standing controller and turn-in-place
 
-Status: not started
+Status: in progress
 
 Objective:
 
@@ -176,9 +208,17 @@ Exit criteria:
 - stable idle for long durations without jitter buildup
 - controllable turn-in-place without leg collapse or shoulder flail
 
+Current state:
+
+- stand-assist posture targets, foot planting, support-height regulation, grounded-state hysteresis, delayed jump-contact clearing, and downward Rapier ground probes are implemented
+- the controller is still not reliably meeting the exit criteria:
+  - the active ragdoll can still kneel, collapse, or oscillate after spawn
+  - first-step walking is still blocked by standing instability
+  - turn-in-place is not yet a trustworthy product behavior
+
 ## Phase 3: Forward walking and running
 
-Status: in progress
+Status: architecture implemented, tuning incomplete
 
 Objective:
 
@@ -222,6 +262,18 @@ Exit criteria:
 - stable transition walk -> run -> walk
 - no persistent leg scissoring or foot chatter in steady gait
 
+Current state:
+
+- the controller already contains:
+  - an explicit gait FSM
+  - phase-based pose targets
+  - COM and capture-point feedback
+  - explicit step length, width, and clearance targets
+  - locomotion family configs
+  - recovery and deterministic gait re-entry
+- this phase is not functionally complete because the active ragdoll still cannot reliably stand, start walking, or sustain stable forward locomotion
+- Mixamo-based target motion is now wired as a hidden reference rig, but it is not yet enough to guarantee physical walking stability
+
 ## Phase 4: Backpedal, strafe, and curved locomotion
 
 Status: not started
@@ -261,7 +313,7 @@ Exit criteria:
 
 ## Phase 5: Jumping, airtime, and landing
 
-Status: not started
+Status: partially complete
 
 Objective:
 
@@ -291,9 +343,15 @@ Exit criteria:
 - landing can re-enter locomotion only after support is re-established
 - bad landings are diagnosable and recoverable
 
+Current state:
+
+- explicit `jumping`, `landing`, `fallen`, and `recovering` states already exist
+- jump-contact clearing has been improved and landing no longer relies only on raw foot-collision callbacks
+- this phase is still incomplete because landing quality and locomotion re-entry are not yet consistently stable in-scene
+
 ## Phase 6: Disturbance rejection and recovery
 
-Status: not started
+Status: partially complete
 
 Objective:
 
@@ -326,6 +384,12 @@ Exit criteria:
 - moderate perturbations produce visible stepping recovery
 - severe perturbations fall cleanly instead of exploding numerically
 - recovery transitions are traceable from debug output
+
+Current state:
+
+- recovery-state classification and deterministic re-entry paths already exist
+- debug output exposes recovery state and recent transitions
+- the controller still needs reliable disturbance rejection in practice; current recovery often compensates for a fundamentally unstable stand/walk base instead of a healthy gait
 
 ## Phase 7: Production hardening
 
@@ -362,11 +426,11 @@ Exit criteria:
 
 ## Immediate execution order
 
-1. Finish Phase 0 and Phase 1 together so locomotion tuning starts from a stable, observable rig.
-2. Finish Phase 2 before adding any more locomotion modes.
-3. Finish Phase 3 before attempting backward or strafe movement.
-4. Add jump only after forward gait and landing support metrics are trustworthy.
-5. Add recovery only after failure classification can be debugged deterministically.
+1. Finish Phase 2 for real: stable neutral standing and controllable turn-in-place must work before more gait tuning.
+2. Re-tune Phase 3 on top of that stable standing baseline: first step, continuous forward walk, then walk/run transitions.
+3. Tighten Phase 1 observability around joint target vs actual error and failure classification so standing/walking failures are measurable, not guessed.
+4. Revisit Phase 5 and Phase 6 only after standing and forward gait are trustworthy enough that recovery is not masking a broken base controller.
+5. Defer new locomotion families until the forward active-ragdoll path is genuinely shippable.
 
 ## Definition of done for the first publishable active-ragdoll release
 
@@ -381,3 +445,12 @@ The first release should not promise everything. It should promise:
 - documented tunables and failure modes
 
 Backward locomotion, strafing, partial-ragdoll reactions, and advanced recovery can land after that baseline is solid.
+
+## Immediate blocker
+
+The current blocker is no longer architecture. It is behavior:
+
+- the active ragdoll still does not reliably stand in a neutral double-support pose
+- because stable standing is not yet solved, first-step walking and sustained gait remain unreliable
+- all near-term work should be judged against one question first:
+  - does this make the active ragdoll stand stably enough to begin tuning the first step?
