@@ -10,10 +10,6 @@ The active-ragdoll controller is still unstable and the walking controller is no
 
 ## Current demo capture
 
-Capsule baseline:
-
-![Capsule baseline](./docs/media/capsule-baseline.png)
-
 Active ragdoll WIP:
 
 ![Active ragdoll WIP](./docs/media/active-ragdoll-wip.png)
