@@ -2,6 +2,12 @@
 
 `a-character-controller` is a hybrid `library + demo` project for a React Three Fiber third-person controller stack. It ships a reusable primitive player, a follow camera with camera-occlusion handling, scoped controller state, a humanoid ragdoll dummy, and an in-world ragdoll debug lab.
 
+## WIP
+
+This does not work yet.
+
+The active-ragdoll controller is still unstable and the walking controller is not solved. If you know how to make this character stand, step, and walk reliably, please help.
+
 Package name:
 
 ```bash
