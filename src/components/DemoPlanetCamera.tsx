@@ -81,7 +81,7 @@ export function DemoPlanetCamera(props: {
       .copy(localNorth)
       .multiplyScalar(Math.cos(yawRef.current) * planarRadius)
       .addScaledVector(localEast, Math.sin(yawRef.current) * planarRadius)
-      .addScaledVector(up, Math.sin(pitchRef.current) * radiusRef.current)
+      .addScaledVector(up, -Math.sin(pitchRef.current) * radiusRef.current)
       .add(focus);
 
     camera.up.copy(up);
