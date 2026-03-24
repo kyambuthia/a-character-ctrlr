@@ -47,9 +47,9 @@ export function TerrainArena() {
 
   return (
     <>
-      <mesh castShadow receiveShadow geometry={planet.geometry}>
+      <mesh castShadow receiveShadow geometry={planet.geometry} scale={0.985}>
         <meshStandardMaterial
-          color="#66755a"
+          color="#ffffff"
           metalness={0.02}
           roughness={0.96}
           vertexColors
